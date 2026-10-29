@@ -1,0 +1,1605 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#030406">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23030406'/%3E%3Cg transform='rotate(-11 50 50)'%3E%3Cellipse cx='50' cy='50' rx='44' ry='9' fill='none' stroke='%23c98a52' stroke-width='6'/%3E%3Cpath d='M27 49a23 23 0 0 1 46 0' fill='none' stroke='%23fff0d6' stroke-width='8' stroke-linecap='round'/%3E%3Ccircle cx='50' cy='50' r='17' fill='%23020203' stroke='%23fff4dc' stroke-width='2.5'/%3E%3Cpath d='M6 50a44 9 0 0 0 88 0' fill='none' stroke='%23f2cf9c' stroke-width='6'/%3E%3C/g%3E%3C/svg%3E">
+<link rel="canonical" href="https://eijefee.github.io/nashira/">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://eijefee.github.io/nashira/">
+<meta property="og:title" content="Nashira">
+<meta property="og:description" content="La liquidez atrae al precio. Nashira te dice dónde.">
+<meta property="og:image" content="https://eijefee.github.io/nashira/grafico.webp">
+<meta name="twitter:card" content="summary_large_image">
+<title>Nashira</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="description" content="Nashira: terminal de lectura de liquidez. Cada barrido confirmado, el porqué de cada orden y todos los resultados publicados.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Serif:ital@0;1&family=Geist:wght@300;400;500;600;700&family=Geist+Mono:wght@400;500&family=Cormorant:wght@500&display=swap">
+<style>
+/* Layout: una sola columna de producto. La portada es un agujero negro en vivo (la liquidez que atrae al
+   precio); después, la prueba en orden: una lectura real, los mercados con sus resultados, el terminal,
+   el canal y los límites. Titulares en serif fina, como un título de película; datos en mono. */
+:root {
+  --fondo: #030406;
+  --panel: #0a0b0d;
+  --panel-2: #0e1013;
+  --linea: #1b1d21;
+  --linea-2: #26292e;
+  --tinta: #f3f1ec;
+  --tinta-2: #a0a3a9;
+  --tinta-3: #656970;
+  --oro: #e7cd8b;
+  --fuego: #f0a35a;
+  --sube: #3fbfa3;
+  --baja: #e0604d;
+  --liq: #ffe600;
+  --titulo: "Instrument Serif", "Times New Roman", Georgia, serif;
+  --texto: "Geist", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --dato: "Geist Mono", ui-monospace, Menlo, Consolas, monospace;
+  --marca: "Cormorant", Georgia, serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { background: var(--fondo); }
+body { background: transparent; color: var(--tinta); margin: 0; }
+/* El espacio, detrás de toda la página: nebulosas tenues que derivan despacio y un campo de estrellas en
+   3D. Las estrellas vienen hacia ti muy despacio y, al hacer scroll, viajas entre ellas. Las secciones no
+   tienen fondo propio: todo flota en el mismo espacio. */
+.cielo { position: fixed; inset: 0; z-index: -10; pointer-events: none; overflow: hidden; }
+.cielo canvas { position: absolute; display: block; }
+#nebulosa { left: -10%; top: -10%; width: 120%; height: 120%; animation: nebulosa 110s ease-in-out infinite alternate; }
+#estrellas { left: 0; top: 0; width: 100%; height: 100%; }
+@keyframes nebulosa { from { transform: translate3d(-3%, -2%, 0) scale(1.02); } to { transform: translate3d(3%, 2.5%, 0) scale(1.1); } }
+html { scroll-behavior: smooth; }
+body { font-family: var(--texto); font-size: 16px; line-height: 1.6; -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+a { color: inherit; }
+::selection { background: rgba(231,205,139,.3); }
+:focus-visible { outline: 2px solid var(--oro); outline-offset: 3px; border-radius: 2px; }
+.env { max-width: 1240px; margin: 0 auto;
+  padding-left: max(24px, env(safe-area-inset-left, 0px));
+  padding-right: max(24px, env(safe-area-inset-right, 0px)); }
+.ojo { font: 500 11px var(--dato); letter-spacing: .22em; text-transform: uppercase; color: var(--oro); display: flex; align-items: center; gap: 12px; }
+.ojo::before { content: ""; width: 22px; height: 1px; background: currentColor; opacity: .7; }
+h1, h2, h3 { font-family: var(--titulo); font-weight: 400; letter-spacing: -0.01em; text-wrap: balance; margin: 0; }
+h1 em, h2 em { font-style: italic; color: var(--oro); }
+.num { font-family: var(--dato); font-variant-numeric: tabular-nums; }
+
+/* ── Barra ─────────────────────────────── */
+header { position: fixed; inset: 0 0 auto 0; top: env(safe-area-inset-top, 0px); z-index: 30; transition: background .35s, border-color .35s, backdrop-filter .35s; border-bottom: 1px solid transparent; }
+header.solida { background: rgba(3,4,6,.92); border-color: var(--linea); }
+.barra { display: flex; align-items: center; gap: 30px; height: 68px; }
+.marca { display: flex; align-items: center; gap: 11px; text-decoration: none; }
+.marca svg { display: block; overflow: visible; }
+/* El logo: Gargantua en pequeño. La sombra con su filo de luz, el arco que la lente dobla por encima y el
+   disco cruzando por delante, con partículas que giran de verdad alrededor del agujero. */
+.garg .disco { fill: none; stroke: url(#g-disco); stroke-width: 4.2; }
+.garg .arco { fill: none; stroke: url(#g-arco); stroke-width: 6; stroke-linecap: round; }
+.garg .arco-b { fill: none; stroke: #f3e2c2; stroke-width: 1.6; opacity: .45; }
+.garg .sombra { fill: #020203; }
+.garg .anillo { fill: none; stroke: #fff4dc; stroke-width: 1.3; }
+.garg .flujo { fill: none; stroke: #fffaf0; stroke-width: 1.4; stroke-linecap: round; stroke-dasharray: 1 6 3 9 1.5 7 4 12;
+  animation: flujo 7s linear infinite; }
+.garg .flujo.b { stroke-width: .9; opacity: .7; stroke-dasharray: 2 11 1 8 3 14; animation-duration: 11s; }
+.garg .luz { fill: url(#g-luz); }
+@keyframes flujo { to { stroke-dashoffset: -100; } }
+.marca b { font: 500 22px var(--marca); letter-spacing: .18em; }
+nav { display: flex; gap: 28px; font: 400 14px var(--texto); }
+nav a { text-decoration: none; color: var(--tinta-2); transition: color .2s; }
+nav a:hover { color: var(--tinta); }
+.derecha { margin-left: auto; display: flex; align-items: center; gap: 18px; }
+.idiomas { display: flex; gap: 2px; font: 500 11px var(--dato); }
+.idiomas button { background: none; border: 0; color: var(--tinta-3); padding: 6px 7px; cursor: pointer; letter-spacing: .08em; border-radius: 3px; }
+.idiomas button:hover { color: var(--tinta-2); }
+.idiomas button[aria-pressed="true"] { color: var(--tinta); }
+.canal { font: 500 13px var(--texto); text-decoration: none; color: var(--oro); padding: 8px 14px; border-radius: 4px;
+  border: 1px solid rgba(231,205,139,.45); transition: background .2s, border-color .2s; white-space: nowrap; }
+.canal:hover { background: rgba(231,205,139,.1); border-color: var(--oro); }
+
+/* ── Portada ───────────────────────────── */
+.portada { position: relative; overflow: hidden; isolation: isolate; min-height: 100svh; display: flex; flex-direction: column; }
+/* La escena se desvanece hacia el espacio de la página (máscara), en vez de taparse con negro: a la
+   izquierda para que el texto se lea y abajo para que siga el cielo sin corte. */
+.portada canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; z-index: -2;
+  --m-x: linear-gradient(90deg, rgba(0,0,0,.14) 0%, rgba(0,0,0,.45) 32%, #000 58%);
+  --m-y: linear-gradient(180deg, #000 0%, #000 74%, rgba(0,0,0,.45) 88%, transparent 99%);
+  -webkit-mask-image: var(--m-x), var(--m-y); -webkit-mask-composite: source-in;
+  mask-image: var(--m-x), var(--m-y); mask-composite: intersect;
+  opacity: 0; transition: opacity 1.4s ease; }
+/* Aparece con un fundido cuando el gas está listo; si la tarjeta se reinicia, se desvanece. */
+.portada canvas.listo { opacity: 1; }
+.portada .velo { position: absolute; inset: 0; z-index: -1; pointer-events: none;
+  background: linear-gradient(180deg, rgba(3,4,6,.5) 0%, rgba(3,4,6,0) 16%); }
+.portada > .env { position: relative; flex: 1; display: flex; flex-direction: column; justify-content: center; padding-block: 150px 60px; width: 100%; }
+.portada h1 { font-size: clamp(54px, 7.2vw, 112px); line-height: .92; margin-top: 26px; max-width: 12ch; }
+.portada h1 em { display: block; background: linear-gradient(95deg, #f6e3ad, #e7b462 55%, #ffe9b8); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; padding-right: .1em; }
+.bajada { font: 300 clamp(17px, 1.55vw, 20px)/1.6 var(--texto); color: #c3c6cb; margin: 28px 0 0; max-width: 38ch; }
+.acciones { display: flex; flex-wrap: wrap; align-items: center; gap: 24px; margin-top: 40px; }
+.boton { display: inline-flex; align-items: center; gap: 11px; font: 500 15.5px var(--texto); text-decoration: none; color: #120e07;
+  background: linear-gradient(180deg, #f2dda4, #e2bf72); padding: 15px 24px; border-radius: 4px;
+  box-shadow: 0 1px 0 rgba(255,255,255,.4) inset, 0 12px 40px rgba(226,180,100,.22); transition: transform .2s ease, box-shadow .2s ease; }
+.boton:hover { transform: translateY(-2px); box-shadow: 0 1px 0 rgba(255,255,255,.4) inset, 0 18px 50px rgba(226,180,100,.35); }
+.boton svg { width: 18px; height: 18px; fill: currentColor; }
+.enlace { font: 400 15px var(--texto); color: var(--tinta); text-decoration: none; display: inline-flex; align-items: center; gap: 8px; }
+.enlace span { border-bottom: 1px solid rgba(255,255,255,.3); padding-bottom: 2px; transition: border-color .2s; }
+.enlace:hover span { border-color: var(--oro); }
+.letra { font: 400 12.5px var(--texto); color: var(--tinta-3); margin-top: 18px; }
+.cinta { position: relative; background: linear-gradient(180deg, rgba(3,4,6,0), rgba(3,4,6,.45)); }
+.cinta::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 1px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,.09) 25%, rgba(255,255,255,.09) 75%, transparent); }
+.cinta .env { padding-block: 18px; font: 400 12px var(--dato); color: var(--tinta-2); letter-spacing: .04em; overflow: hidden;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); mask-image: linear-gradient(90deg, transparent, #000 7%, #000 93%, transparent); }
+/* Los datos desfilan en bucle, como un teletipo (dos copias seguidas; se para al pasar el ratón). */
+.cinta .tira { display: flex; width: max-content; animation: tira 46s linear infinite; }
+.cinta .grupo { display: flex; align-items: center; gap: 44px; padding-right: 44px; white-space: nowrap; }
+.cinta:hover .tira { animation-play-state: paused; }
+@keyframes tira { to { transform: translateX(-50%); } }
+.cinta b { color: var(--tinta); font-weight: 500; }
+.cinta .vivo { display: inline-flex; align-items: center; gap: 8px; color: var(--sube); }
+.cinta .vivo i { width: 6px; height: 6px; border-radius: 50%; background: var(--sube); animation: pulso 2s ease-in-out infinite; }
+@keyframes pulso { 50% { box-shadow: 0 0 0 5px rgba(63,191,163,0); opacity: .5; } 0%, 100% { box-shadow: 0 0 0 0 rgba(63,191,163,.5); } }
+
+/* ── Secciones ─────────────────────────── */
+section.parte { padding-block: 140px 0; }
+.cabecera { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 40px; align-items: end; margin-bottom: 48px; }
+.cabecera h2 { font-size: clamp(40px, 5.2vw, 72px); line-height: 1; margin-top: 18px; }
+.cabecera p { color: var(--tinta-2); font: 300 17px/1.65 var(--texto); margin: 0; max-width: 44ch; }
+
+/* La lectura real */
+.mesa { background: linear-gradient(180deg, rgba(16,18,23,.74), rgba(7,8,11,.88)); border: 1px solid rgba(255,255,255,.07); border-radius: 10px; overflow: hidden; position: relative;
+  box-shadow: 0 60px 120px -40px rgba(0,0,0,.9); }
+.cabeza { display: flex; align-items: center; gap: 16px; padding: 12px 18px; border-bottom: 1px solid var(--linea);
+  font: 400 12px var(--dato); color: var(--tinta-2); flex-wrap: wrap; }
+.cabeza b { color: var(--tinta); font-weight: 500; }
+.cabeza .marco { color: var(--oro); border: 1px solid rgba(231,205,139,.3); padding: 1px 6px; border-radius: 3px; }
+.cabeza .rep { margin-left: auto; display: flex; align-items: center; gap: 12px; }
+.cabeza button { font: 400 12px var(--dato); color: var(--tinta); background: transparent; border: 1px solid var(--linea-2);
+  border-radius: 4px; padding: 5px 10px; cursor: pointer; transition: border-color .2s; }
+.cabeza button:hover { border-color: var(--tinta-3); }
+.cuerpo { display: grid; grid-template-columns: minmax(0, 1fr) 340px; }
+.lienzo { position: relative; aspect-ratio: 16 / 9; min-width: 0; max-width: 100%; }
+.lienzo canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block; }
+.registro { list-style: none; margin: 0; padding: 0; border-left: 1px solid var(--linea); font: 400 12.5px/1.5 var(--dato);
+  display: flex; flex-direction: column; min-width: 0; }
+.registro li { padding: 13px 18px; color: var(--tinta-3); border-bottom: 1px solid var(--linea); transition: color .35s, background .35s; position: relative; }
+.registro li .h { display: flex; gap: 10px; align-items: baseline; }
+.registro li .que { font-weight: 500; letter-spacing: .08em; }
+.registro li .dice { display: block; margin-top: 4px; }
+.registro li.hecho { color: var(--tinta-2); }
+.registro li.hecho .que { color: var(--tinta); }
+.registro li.ahora { color: var(--tinta); background: linear-gradient(90deg, rgba(231,205,139,.09), transparent); }
+.registro li.ahora::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 2px; background: var(--oro); }
+.registro li.ahora .que { color: var(--oro); }
+.registro .baja { color: var(--baja); }
+.registro .ok { color: var(--sube); font-family: "Segoe UI Symbol", "Apple Symbols", "Noto Sans Symbols 2", system-ui, sans-serif; }
+.registro .fin { margin-top: auto; border-bottom: 0; border-top: 1px solid var(--linea); color: var(--tinta-2); font-style: italic; }
+
+/* Mercados */
+.tabla { border-top: 1px solid var(--linea); }
+.fila { display: grid; grid-template-columns: minmax(0, 2.2fr) minmax(0, 1fr) minmax(0, 2.2fr) minmax(0, 1.2fr); gap: 24px; align-items: center;
+  padding: 22px 6px; border-bottom: 1px solid var(--linea); transition: background .25s; }
+.fila:not(.titulos):hover { background: linear-gradient(90deg, rgba(255,255,255,.025), transparent); }
+.titulos { padding-block: 14px; font: 400 11px var(--dato); letter-spacing: .14em; text-transform: uppercase; color: var(--tinta-3); }
+.par { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.ficha { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; font: 500 13px var(--dato); flex: none;
+  background: radial-gradient(circle at 30% 30%, rgba(255,255,255,.12), rgba(255,255,255,.02)); border: 1px solid var(--linea-2); }
+.par b { display: block; font: 400 26px var(--titulo); line-height: 1; }
+.par small { display: block; font: 400 12px var(--dato); color: var(--tinta-3); margin-top: 4px; }
+.fila .num { font-size: 15px; }
+.barra-ac { display: flex; align-items: center; gap: 14px; }
+.barra-ac .pista { display: block; flex: 1; height: 4px; border-radius: 2px; background: var(--linea-2); overflow: hidden; }
+.barra-ac .lleno { display: block; height: 100%; width: var(--v); background: linear-gradient(90deg, #8a6a2f, var(--oro)); border-radius: 2px;
+  transform-origin: left; transition: transform 1.2s cubic-bezier(.2,.7,.2,1); }
+.tabla:not(.vista) .lleno { transform: scaleX(.15); }
+.r { font-size: 16px; }
+.r.pos { color: var(--sube); } .r.neg { color: var(--baja); }
+.fila.total { border-bottom: 0; }
+.fila.total .par b { font-style: italic; color: var(--oro); }
+.nota { color: var(--tinta-3); font: 400 13px/1.6 var(--texto); margin-top: 22px; max-width: 80ch; }
+
+/* Terminal */
+.terminal { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 64px; align-items: center; }
+.rasgos { list-style: none; margin: 0; padding: 0; display: grid; gap: 30px; }
+.rasgos li { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 18px; }
+.rasgos .marca-r { font: italic 400 34px var(--titulo); color: var(--oro); line-height: 1; }
+.rasgos h3 { font: 500 17px var(--texto); letter-spacing: 0; }
+.rasgos p { margin: 6px 0 0; color: var(--tinta-2); font: 300 15.5px/1.6 var(--texto); }
+.cifras { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 40px; }
+.cifras span { font: 400 12px var(--dato); color: var(--tinta-2); border: 1px solid var(--linea-2); border-radius: 99px; padding: 6px 12px; }
+.cifras b { color: var(--tinta); font-weight: 500; }
+.pantalla { perspective: 1400px; }
+.marco-p { border: 1px solid rgba(255,255,255,.08); border-radius: 12px; overflow: hidden; position: relative; background: linear-gradient(180deg, rgba(16,18,23,.8), rgba(7,8,11,.9));
+  box-shadow: 0 80px 140px -50px rgba(0,0,0,.95), 0 0 0 1px rgba(255,255,255,.02);
+  transform: rotateY(-7deg) rotateX(3deg); transition: transform .6s cubic-bezier(.2,.7,.2,1); }
+.marco-p .tope { display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--linea); }
+.marco-p .tope i { width: 9px; height: 9px; border-radius: 50%; background: var(--linea-2); }
+.marco-p img { display: block; width: 100%; height: auto; }
+.bitunix, .abrir { display: inline-flex; gap: 6px; margin-top: 30px; font: 400 14px var(--texto); color: var(--oro); text-decoration: none; }
+.bitunix:hover, .abrir:hover { color: var(--tinta); }
+.abrir + .bitunix { margin-left: 28px; }
+.bitunix[hidden] { display: none; }
+
+/* Telegram */
+.telegram { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 64px; align-items: center; }
+.chat { background: linear-gradient(180deg, rgba(14,21,30,.76), rgba(7,10,14,.88)); border: 1px solid rgba(140,180,230,.1); border-radius: 16px; padding: 22px; display: grid; gap: 12px; position: relative; }
+.chat .canal-cab { display: flex; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid #18212b; margin-bottom: 4px; }
+.chat .avatar { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: #11161c; border: 1px solid #222c37; }
+.chat .canal-cab b { font: 500 15px var(--texto); display: block; }
+.chat .canal-cab small { font: 400 12px var(--texto); color: var(--tinta-3); }
+.msg { background: #121a23; border: 1px solid #1c2733; border-radius: 14px 14px 14px 4px; padding: 13px 15px; font: 400 14px/1.55 var(--texto); max-width: 470px;
+  transition: opacity .6s ease, transform .6s ease; }
+.chat:not(.vista) .msg { opacity: .35; transform: translateY(10px); }
+.chat .msg:nth-of-type(2) { transition-delay: .25s; } .chat .msg:nth-of-type(3) { transition-delay: .5s; }
+.msg .cab { font-weight: 600; }
+.msg .m { font: 400 12.5px var(--dato); color: #d6d9de; }
+.msg i { color: var(--tinta-3); font-size: 12.5px; }
+.msg .ok { color: var(--sube); font-family: "Segoe UI Symbol", "Apple Symbols", "Noto Sans Symbols 2", system-ui, sans-serif; }
+.msg .hora { display: block; text-align: right; font: 400 11px var(--dato); color: var(--tinta-3); margin-top: 4px; }
+.lista { list-style: none; padding: 0; margin: 30px 0 0; display: grid; gap: 18px; }
+.lista li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 12px; color: var(--tinta-2); font: 300 16px/1.6 var(--texto); }
+.lista li::before { content: "✦"; color: var(--oro); font-size: 12px; padding-top: 5px; }
+.lista b { color: var(--tinta); font-weight: 500; }
+
+/* Límites */
+.limites { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); border-top: 1px solid var(--linea); }
+.limite { padding: 32px 28px 8px 0; min-width: 0; }
+.limite + .limite { padding-left: 28px; border-left: 1px solid var(--linea); }
+.limite .n { font: 400 11px var(--dato); color: var(--tinta-3); letter-spacing: .14em; }
+.limite h3 { font-size: 28px; line-height: 1.1; margin: 16px 0 10px; }
+.limite p { color: var(--tinta-2); font: 300 15px/1.6 var(--texto); margin: 0; }
+
+/* Cierre sobre la Vía Láctea. No es una foto fija: tres capas de movimiento.
+   1) El cielo gira despacio alrededor del centro de la Tierra (como se ve desde la Estación Espacial):
+      el horizonte, que es un arco de ese círculo, se queda en su sitio; las estrellas se mueven.
+   2) La foto se mezcla en modo pantalla con el espacio de la página: a través de su cielo oscuro asoman
+      las estrellas en 3D que se mueven, las fugaces y el viaje al hacer scroll.
+   3) Al bajar, la foto va más despacio que el texto (profundidad) y la atmósfera late en el horizonte.
+   Sin isolation: si la sección aislara su mezcla, la foto no vería el espacio de detrás. */
+.cierre { position: relative; margin-top: 160px; overflow: hidden; text-align: center; }
+.cierre .foto-capa { position: absolute; inset: 0; z-index: -2; mix-blend-mode: screen; pointer-events: none;
+  -webkit-mask-image: linear-gradient(180deg, transparent 0%, #000 26%, #000 84%, transparent 100%);
+  mask-image: linear-gradient(180deg, transparent 0%, #000 26%, #000 84%, transparent 100%); }
+.cierre .foto-par { position: absolute; inset: -14%; will-change: transform; }
+.cierre .foto { position: absolute; inset: 0;
+  background: linear-gradient(rgba(0,0,0,.3), rgba(0,0,0,.3)), url("via_lactea.webp") 50% 38% / cover no-repeat;
+  transform-origin: 50% 190%; animation: cielo-gira 45s ease-in-out infinite alternate; }
+@keyframes cielo-gira { from { transform: rotate(-3deg) scale(1.05); } to { transform: rotate(3deg) scale(1.11); } }
+.cierre .aura { position: absolute; left: -10%; right: -10%; bottom: 0; height: 46%; z-index: -1; pointer-events: none; mix-blend-mode: screen;
+  background: radial-gradient(55% 38% at 50% 100%, rgba(255,214,150,.2), transparent 72%),
+              radial-gradient(85% 26% at 50% 100%, rgba(110,200,170,.12), transparent 70%);
+  animation: aura 7s ease-in-out infinite alternate; }
+@keyframes aura { from { opacity: .4; } to { opacity: 1; } }
+.cierre .env { padding-block: 200px 180px; }
+.cierre h2 { font-size: clamp(44px, 6vw, 88px); line-height: 1; max-width: 14ch; margin: 22px auto 0; }
+.cierre p { color: #c9ccd1; font: 300 18px var(--texto); margin: 24px auto 0; }
+.cierre .acciones { justify-content: center; }
+.cierre .ojo { justify-content: center; }
+.credito { position: absolute; right: max(24px, env(safe-area-inset-right, 0px)); bottom: 18px; font: 400 10.5px var(--dato); color: rgba(255,255,255,.32); }
+.pronto { display: none; font: 400 13px var(--texto); color: var(--oro); margin-top: 18px; }
+body.sin-canal .pronto { display: block; }
+
+footer { border-top: 1px solid var(--linea); padding-block: 36px; font: 400 12.5px var(--texto); color: var(--tinta-3); }
+footer .env { display: flex; flex-wrap: wrap; gap: 14px 40px; justify-content: space-between; align-items: center; }
+footer .marca b { font-size: 17px; }
+
+/* ── Acabados: instrumentos en el espacio ───────────────────────────────────────────────────
+   Los paneles son cristal oscuro translúcido (se adivinan las estrellas detrás), con un filo de luz arriba
+   y un foco cálido que sigue al cursor. */
+.mesa::after, .marco-p::after, .chat::after { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 3;
+  padding: 1px; background: linear-gradient(180deg, rgba(255,226,180,.3), rgba(255,255,255,.05) 26%, rgba(255,255,255,0) 60%, rgba(231,205,139,.12));
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude; }
+.fila { position: relative; }
+.mesa::before, .marco-p::before, .chat::before, .fila::before { content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none; z-index: 2;
+  background: radial-gradient(460px circle at var(--mx, 50%) var(--my, 0%), rgba(255,214,160,.09), transparent 62%);
+  opacity: var(--foco, 0); transition: opacity .45s ease; mix-blend-mode: screen; }
+/* Un destello de luz recorre de vez en cuando las palabras doradas de los titulares. */
+h2 em, .cierre h2 em { background-image: linear-gradient(100deg, #e7cd8b 0%, #e7cd8b 42%, #fff4d6 50%, #e7cd8b 58%, #e7cd8b 100%);
+  background-size: 260% 100%; background-position: 100% 0; -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+  animation: destello 8s ease-in-out 1.5s infinite; }
+.portada h1 em { background-image: linear-gradient(100deg, #f6e3ad 0%, #e7b462 40%, #fff3d6 50%, #e7b462 60%, #ffe9b8 100%);
+  background-size: 260% 100%; background-position: 100% 0; animation: destello 8s ease-in-out 4s infinite; }
+@keyframes destello { 0% { background-position: 100% 0; } 28%, 100% { background-position: 0% 0; } }
+/* El botón principal: un destello que orbita su borde (como el disco del agujero) y un leve acercamiento al cursor. */
+@property --ang { syntax: '<angle>'; inherits: false; initial-value: 0deg; }
+.boton { position: relative; transition: transform .2s ease, box-shadow .2s ease, translate .3s cubic-bezier(.2,.7,.2,1); }
+.boton::after { content: ""; position: absolute; inset: -2px; border-radius: 6px; padding: 1.5px; pointer-events: none;
+  background: conic-gradient(from var(--ang), transparent 0deg 250deg, rgba(255,250,235,.95) 300deg, transparent 340deg);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
+  animation: orbita 3.4s linear infinite; }
+@keyframes orbita { to { --ang: 360deg; } }
+
+/* Aparecer al bajar: cada bloque llega desde el fondo del espacio (se acerca y se endereza). Nunca
+   invisible del todo, por si el navegador no avisa. */
+.revela { transition: opacity 1.1s ease, transform 1.3s cubic-bezier(.16,.8,.2,1); transform-origin: 50% 100%; }
+.revela:not(.vista) { opacity: .3; transform: perspective(1400px) translate3d(0, 70px, -160px) rotateX(9deg); }
+/* La entrada: pantalla negra, el logo se dibuja (el filo de luz, el arco, el disco), aparece el nombre y
+   todo se abre a la escena mientras la cámara llega al agujero. Solo CSS: si algo falla, igual se va. */
+.intro { position: fixed; inset: 0; z-index: 60; background: var(--fondo); display: grid; place-items: center;
+  pointer-events: none; animation: intro-sale 1s cubic-bezier(.6,0,.2,1) 2.3s forwards; }
+.intro .caja { display: grid; justify-items: center; gap: 22px; animation: intro-crece 3.3s cubic-bezier(.2,.6,.2,1) both; }
+.intro svg { width: 132px; height: 132px; overflow: visible; filter: drop-shadow(0 0 18px rgba(255,214,160,.35)); }
+.intro .anillo, .intro .arco, .intro .disco { stroke-dasharray: 1; stroke-dashoffset: 1; }
+.intro .anillo { animation: dibuja .9s cubic-bezier(.6,0,.2,1) .15s forwards; }
+.intro .arco { animation: dibuja .8s cubic-bezier(.6,0,.2,1) .6s forwards; }
+.intro .disco { animation: dibuja 1s cubic-bezier(.6,0,.2,1) .85s forwards; }
+.intro .flujo { opacity: 0; animation: aparece .8s ease 1.4s forwards, flujo 7s linear infinite; }
+.intro .luz { opacity: 0; animation: aparece 1.2s ease 1.1s forwards; }
+.intro .nombre { font: 500 21px var(--marca); letter-spacing: .9em; padding-left: .9em; color: var(--tinta); opacity: 0;
+  animation: nombre 1.4s cubic-bezier(.2,.7,.2,1) 1.05s forwards; }
+@keyframes dibuja { to { stroke-dashoffset: 0; } }
+@keyframes aparece { to { opacity: 1; } }
+@keyframes nombre { to { opacity: 1; letter-spacing: .42em; padding-left: .42em; } }
+@keyframes intro-crece { from { transform: scale(.94); } to { transform: scale(1.06); } }
+@keyframes intro-sale { to { opacity: 0; visibility: hidden; } }
+.sin-intro .intro { display: none; }
+/* Después, el titular por líneas: sube, se enfoca y se ilumina. */
+.entra { animation: entra 1.2s cubic-bezier(.2,.7,.2,1) 2.5s both; }
+.entra.d1 { animation-delay: 2.62s; } .entra.d2 { animation-delay: 2.78s; } .entra.d3 { animation-delay: 2.92s; } .entra.d4 { animation-delay: 3.05s; }
+.sin-intro .entra { animation-delay: .1s; } .sin-intro .entra.d1 { animation-delay: .22s; } .sin-intro .entra.d2 { animation-delay: .34s; }
+.sin-intro .entra.d3 { animation-delay: .46s; } .sin-intro .entra.d4 { animation-delay: .58s; }
+@keyframes entra { from { opacity: 0; translate: 0 26px; filter: blur(8px); } to { opacity: 1; translate: 0 0; filter: blur(0); } }
+header { animation: cabecera 1s ease 2.4s both; }
+.sin-intro header { animation-delay: 0s; }
+@keyframes cabecera { from { opacity: 0; translate: 0 -10px; } to { opacity: 1; translate: 0 0; } }
+
+@media (max-width: 1000px) {
+  nav { display: none; }
+  .cabecera, .terminal, .telegram { grid-template-columns: minmax(0, 1fr); }
+  .cuerpo { grid-template-columns: minmax(0, 1fr); }
+  .registro { border-left: 0; border-top: 1px solid var(--linea); }
+  .limites { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .limite:nth-child(3) { padding-left: 0; border-left: 0; }
+  .marco-p { transform: none; }
+}
+@media (max-width: 900px) {
+  /* En pantalla estrecha: el texto arriba, sobre el espacio, y la escena entera debajo. Entra desde el
+     cielo sin borde: arriba y abajo se desvanece en el fondo de estrellas de la página. */
+  .portada { min-height: 0; --escena: min(120vw, 680px); }
+  .portada canvas { top: auto; bottom: 0; height: var(--escena);
+    --m-x: linear-gradient(#000, #000);
+    --m-y: linear-gradient(180deg, transparent 0%, #000 17%, #000 72%, rgba(0,0,0,.45) 87%, transparent 99%); }
+  .portada .velo { display: none; }
+  .portada > .env { justify-content: flex-start; padding-block: 112px calc(var(--escena) - 90px); flex: none; }
+  .cinta .grupo { gap: 30px; padding-right: 30px; }
+  .cinta .env::-webkit-scrollbar { display: none; }
+}
+@media (max-width: 640px) {
+  .fila { grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); }
+  .fila > :nth-child(3) { display: none; }
+  .limites { grid-template-columns: minmax(0, 1fr); }
+  .limite + .limite { padding-left: 0; border-left: 0; border-top: 1px solid var(--linea); }
+  .canal { display: none; }
+  section.parte { padding-block: 100px 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .entra, .cinta .vivo i, header, .garg .flujo, #nebulosa { animation: none !important; }
+  .intro { display: none; }
+  .cierre .foto, .cierre .aura, .cinta .tira, h2 em, .portada h1 em, .boton::after { animation: none !important; }
+  .cinta .env { overflow-x: auto; }
+  .revela, .msg, .lleno, .marco-p, .boton { transition: none !important; }
+  .revela:not(.vista), .chat:not(.vista) .msg { opacity: 1; transform: none; }
+  .tabla:not(.vista) .lleno { transform: none; }
+}
+</style>
+</head>
+<body>
+
+
+<svg class="garg" width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false">
+  <defs>
+    <linearGradient id="g-disco" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#7a3e1e" stop-opacity="0"/><stop offset=".18" stop-color="#b8693a"/>
+      <stop offset=".42" stop-color="#f6dcb2"/><stop offset=".5" stop-color="#fff6e6"/><stop offset=".58" stop-color="#f6dcb2"/>
+      <stop offset=".82" stop-color="#b8693a"/><stop offset="1" stop-color="#7a3e1e" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="g-arco" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#fff3dc"/><stop offset=".7" stop-color="#e9c48f"/><stop offset="1" stop-color="#c98a52" stop-opacity=".2"/>
+    </linearGradient>
+    <radialGradient id="g-luz"><stop offset=".35" stop-color="#ffd9a3" stop-opacity=".28"/><stop offset="1" stop-color="#ffd9a3" stop-opacity="0"/></radialGradient>
+    <clipPath id="c-delante"><rect x="0" y="50" width="100" height="50"/></clipPath>
+  </defs>
+</svg>
+<div class="intro" aria-hidden="true">
+  <div class="caja">
+    <svg class="garg" viewBox="0 0 100 100">
+      <g transform="rotate(-11 50 50)">
+        <circle class="luz" cx="50" cy="50" r="40"/>
+        <ellipse class="disco" cx="50" cy="50" rx="45" ry="8.5" pathLength="1"/>
+        <path class="arco" d="M 27.5 49 A 22.5 22.5 0 0 1 72.5 49" pathLength="1"/>
+        <path class="arco-b" d="M 32 53 A 18.5 18.5 0 0 0 68 53"/>
+        <circle class="sombra" cx="50" cy="50" r="16.5"/>
+        <circle class="anillo" cx="50" cy="50" r="17.3" pathLength="1"/>
+        <g clip-path="url(#c-delante)">
+          <ellipse class="disco" cx="50" cy="50" rx="45" ry="8.5" pathLength="1"/>
+          <ellipse class="flujo" cx="50" cy="50" rx="45" ry="8.5" pathLength="100"/>
+          <ellipse class="flujo b" cx="50" cy="50" rx="41" ry="7.2" pathLength="100"/>
+        </g>
+      </g>
+    </svg>
+    <div class="nombre">NASHIRA</div>
+  </div>
+</div>
+<script>
+  // La entrada se ve una vez por visita: si vuelves a la página en la misma sesión, va directa.
+  try { if (sessionStorage.getItem('nashira.intro')) document.documentElement.classList.add('sin-intro'); sessionStorage.setItem('nashira.intro', '1'); } catch (e) { /* sin almacén */ }
+</script>
+<div class="cielo" aria-hidden="true"><canvas id="nebulosa"></canvas><canvas id="estrellas"></canvas></div>
+<header id="barra">
+  <div class="env barra">
+    <a class="marca" href="#inicio" aria-label="Nashira">
+      <svg class="garg" width="38" height="38" viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(-11 50 50)">
+          <circle class="luz" cx="50" cy="50" r="40"/>
+          <ellipse class="disco" cx="50" cy="50" rx="45" ry="8.5" pathLength="1"/>
+          <path class="arco" d="M 27.5 49 A 22.5 22.5 0 0 1 72.5 49" pathLength="1"/>
+          <path class="arco-b" d="M 32 53 A 18.5 18.5 0 0 0 68 53"/>
+          <circle class="sombra" cx="50" cy="50" r="16.5"/>
+          <circle class="anillo" cx="50" cy="50" r="17.3" pathLength="1"/>
+          <g clip-path="url(#c-delante)">
+            <ellipse class="disco" cx="50" cy="50" rx="45" ry="8.5" pathLength="1"/>
+            <ellipse class="flujo" cx="50" cy="50" rx="45" ry="8.5" pathLength="100"/>
+            <ellipse class="flujo b" cx="50" cy="50" rx="41" ry="7.2" pathLength="100"/>
+          </g>
+        </g></svg>
+      <b>NASHIRA</b>
+    </a>
+    <nav aria-label="Secciones">
+      <a href="#grafico" data-t="nav1">Lectura real</a>
+      <a href="#mercados" data-t="nav2">Mercados</a>
+      <a href="#terminal" data-t="nav3">Terminal</a>
+      <a href="#telegram">Telegram</a>
+    </nav>
+    <div class="derecha">
+      <div class="idiomas" role="group" aria-label="Idioma">
+        <button type="button" id="es" data-idioma="es" aria-pressed="true">ES</button>
+        <button type="button" id="en" data-idioma="en" aria-pressed="false">EN</button>
+        <button type="button" id="pt" data-idioma="pt" aria-pressed="false">PT</button>
+      </div>
+      <a class="canal unirse" href="#unirse" data-t="canal">Canal gratis</a>
+    </div>
+  </div>
+</header>
+
+<main id="inicio">
+  <section class="portada">
+    <canvas id="agujero" role="img" data-t-aria="aria_agujero" aria-label="Un agujero negro con su disco de gas naranja y blanco, el anillo de luz doblado por la gravedad y un planeta"></canvas>
+    <div class="velo" aria-hidden="true"></div>
+    <div class="env">
+      <div class="ojo entra" data-t="ojo">Gravedad de mercado</div>
+      <h1 class="entra d1"><span data-t="h1a">La liquidez atrae al precio.</span> <em data-t="h1b">Nashira te dice dónde.</em></h1>
+      <p class="bajada entra d2" data-t="bajada">Marca dónde esperan las órdenes grandes, confirma cada barrido y te explica el porqué de cada orden.</p>
+      <div class="acciones entra d3">
+        <a class="boton unirse" href="#unirse">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.9 4.3 18.6 20c-.2 1.1-.9 1.4-1.8.9l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.2-8.3c.4-.4-.1-.6-.6-.2L6 13.6l-4.9-1.5c-1.1-.3-1.1-1.1.2-1.6L20.5 3c.9-.3 1.7.2 1.4 1.3z"/></svg>
+          <span data-t="cta">Entrar al canal gratis</span>
+        </a>
+        <a class="enlace" href="#grafico"><span data-t="cta2">Ver una lectura real</span> ↓</a>
+      </div>
+      <p class="letra entra d4" data-t="letra">Sin registro, sin correo, sin tarjeta.</p>
+    </div>
+    <div class="cinta">
+      <div class="env"><div class="tira"><div class="grupo">
+        <span class="vivo"><i aria-hidden="true"></i><span data-t="vivo">24/7 en vivo</span></span>
+        <span><b class="num">1.838</b> <span data-t="c1">órdenes registradas</span></span>
+        <span><b>BTC · ETH · SOL · XRP · <span data-t="oro">ORO</span></b></span>
+        <span><b class="num">28 %</b> <span data-t="c3">llegan al objetivo</span></span>
+        <span data-t="c4">Todo publicado, también lo que sale mal</span>
+      </div></div></div>
+    </div>
+  </section>
+
+  <section class="parte" id="grafico">
+    <div class="env">
+      <div class="cabecera revela">
+        <div><div class="ojo" data-t="g_ojo">Una lectura real</div><h2><span data-t="g_h2a">Un barrido de BTC,</span> <em data-t="g_h2b">vela a vela</em></h2></div>
+        <p data-t="g_p">16 de octubre de 2026. El precio barrió un máximo donde esperaba liquidez y Nashira lo marcó paso a paso, con la hora exacta en que lo supo.</p>
+      </div>
+      <figure class="mesa revela" style="margin:0" data-t-aria="aria_mesa" aria-label="Repetición de un barrido real de BTC leído por Nashira">
+        <div class="cabeza">
+          <b>BTCUSDT</b><span class="marco">3m</span><span data-t="g_fecha">16/10/2026 · hora de Ecuador</span>
+          <span class="rep"><span id="reloj" class="num">08:09</span><button type="button" id="otra" data-t="repetir">↺ Repetir</button></span>
+        </div>
+        <div class="cuerpo">
+          <div class="lienzo"><canvas id="grafico-c" role="img" data-t-aria="aria_velas" aria-label="Velas de BTC de 3 minutos del 16 de octubre de 2026, de 05:36 a 08:09, con el máximo de 82.852,6 barrido a las 06:25 y la orden Short de las 07:12"></canvas></div>
+          <ol class="registro" id="registro">
+            <li data-i="15"><span class="h"><span class="num">06:21</span><span class="que" data-t="e1">NIVEL</span></span><span class="dice" data-t="e1d">82.852,6 · liquidez esperando</span></li>
+            <li data-i="17"><span class="h"><span class="num">06:25</span><span class="que" data-t="e2">BARRIDO</span></span><span class="dice" data-t="e2d">el precio se lleva la liquidez de 82.852,6</span></li>
+            <li data-i="32"><span class="h"><span class="num">07:12</span><span class="que" data-t="e5">ORDEN</span></span><span class="dice"><span class="baja">SHORT</span> <span data-t="e5d">límite 82.431,5 · stop 82.897,6 · objetivo 80.969,1</span></span></li>
+            <li class="fin" data-i="51" data-t="e6">El precio no volvió a 82.431,5 y la orden no se llenó. También se publica.</li>
+          </ol>
+        </div>
+      </figure>
+    </div>
+  </section>
+
+  <section class="parte" id="mercados">
+    <div class="env">
+      <div class="cabecera revela">
+        <div><div class="ojo" data-t="m_ojo">Mercados</div><h2><span data-t="m_h2a">Cinco mercados,</span> <em data-t="m_h2b">todos los resultados</em></h2></div>
+        <p data-t="m_p">Cada orden que Nashira dio desde el 18 de septiembre, seguida hasta el stop o el objetivo con la misma regla. Sin elegir las buenas.</p>
+      </div>
+      <div class="tabla revela" id="tabla">
+        <div class="fila titulos"><span data-t="t1">Mercado</span><span data-t="t2">Órdenes</span><span data-t="t3">Llegan al objetivo</span><span data-t="t4">Resultado medio</span></div>
+        <div class="fila"><span class="par"><span class="ficha">₿</span><span><b>Bitcoin</b><small>BTCUSDT</small></span></span><span class="num">376</span><span class="barra-ac"><span class="pista"><span class="lleno" style="--v:30%"></span></span><span class="num">30 %</span></span><span class="num r pos">+0,10 R</span></div>
+        <div class="fila"><span class="par"><span class="ficha">Ξ</span><span><b>Ethereum</b><small>ETHUSDT</small></span></span><span class="num">357</span><span class="barra-ac"><span class="pista"><span class="lleno" style="--v:31%"></span></span><span class="num">31 %</span></span><span class="num r pos">+0,18 R</span></div>
+        <div class="fila"><span class="par"><span class="ficha">◎</span><span><b>Solana</b><small>SOLUSDT</small></span></span><span class="num">314</span><span class="barra-ac"><span class="pista"><span class="lleno" style="--v:24%"></span></span><span class="num">24 %</span></span><span class="num r neg">−0,21 R</span></div>
+        <div class="fila"><span class="par"><span class="ficha">✕</span><span><b>XRP</b><small>XRPUSDT</small></span></span><span class="num">334</span><span class="barra-ac"><span class="pista"><span class="lleno" style="--v:27%"></span></span><span class="num">27 %</span></span><span class="num r pos">+0,03 R</span></div>
+        <div class="fila"><span class="par"><span class="ficha">Au</span><span><b data-t="oro_n">Oro</b><small>XAUUSDT</small></span></span><span class="num">457</span><span class="barra-ac"><span class="pista"><span class="lleno" style="--v:25%"></span></span><span class="num">25 %</span></span><span class="num r neg">−0,28 R</span></div>
+        <div class="fila total"><span class="par"><span class="ficha">Σ</span><span><b data-t="total">Todos</b><small>18/09 – 16/10/2026</small></span></span><span class="num">1.838</span><span class="barra-ac"><span class="pista"><span class="lleno" style="--v:28%"></span></span><span class="num">28 %</span></span><span class="num r neg">−0,04 R</span></div>
+      </div>
+      <p class="nota revela" data-t="m_nota">Resultado medio por orden, con comisiones, en R (una R es lo que se arriesga hasta el stop). Ningún mercado se distingue todavía del azar: por eso Nashira es una herramienta para leer el mercado, no una máquina de señales.</p>
+    </div>
+  </section>
+
+  <section class="parte" id="terminal">
+    <div class="env">
+      <div class="cabecera revela">
+        <div><div class="ojo" data-t="x_ojo">El terminal</div><h2><span data-t="x_h2a">Todo para leer el mercado,</span> <em data-t="x_h2b">en una pantalla</em></h2></div>
+        <p data-t="x_p">Las herramientas de un terminal profesional, en el navegador y en el teléfono, y lo que ningún otro mide.</p>
+      </div>
+      <div class="terminal">
+        <div class="revela">
+          <ul class="rasgos">
+            <li><span class="marca-r">i.</span><div><h3 data-t="r1h">Barridos confirmados</h3><p data-t="r1p">Nashira solo marca un barrido cuando se confirma, y la etiqueta cae en la vela del giro.</p></div></li>
+            <li><span class="marca-r">ii.</span><div><h3 data-t="r2h">Liquidez en vivo</h3><p data-t="r2p">La línea de liquidez del marco, las zonas que importan y el mapa de calor de liquidaciones de 10× a 100×.</p></div></li>
+            <li><span class="marca-r">iii.</span><div><h3 data-t="r4h">El porqué de cada orden</h3><p data-t="r4p">Qué nivel se barrió, cuándo nació la orden, la entrada, el stop y el objetivo, con un toque.</p></div></li>
+          </ul>
+          <div class="cifras">
+            <span><b>10</b> <span data-t="x1">temporalidades</span></span><span><b>4</b> <span data-t="x2">ventanas</span></span>
+            <span><b>11</b> <span data-t="x3">indicadores</span></span><span><b>24</b> <span data-t="x4">herramientas de dibujo</span></span>
+            <span><b>6</b> <span data-t="x5">tipos de gráfico</span></span>
+          </div>
+          <a class="abrir" href="indicador/"><span data-t="abrir">Ver el indicador</span> →</a>
+          <a class="bitunix" href="#" hidden><span data-t="bx">Opera con Nashira en</span> <b>Bitunix</b> →</a>
+        </div>
+        <div class="pantalla revela">
+          <div class="marco-p" id="marco-p">
+            <div class="tope" aria-hidden="true"><i></i><i></i><i></i></div>
+            <a href="indicador/" aria-label="Ver el indicador" data-t-aria="abrir"><img src="grafico.webp" width="1575" height="882" loading="lazy" data-t-alt="alt_terminal"
+                 alt="El terminal de Nashira: BTC en 5 minutos con etiquetas Short y Long en los giros, zonas y la línea de liquidez"></a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="parte" id="telegram">
+    <div class="env">
+      <div class="telegram">
+        <div class="revela">
+          <div class="ojo">Telegram</div>
+          <h2 style="font-size:clamp(40px,5.2vw,72px);line-height:1;margin-top:18px"><span data-t="tg_h2a">Cada orden,</span> <em data-t="tg_h2b">en tu bolsillo</em></h2>
+          <ul class="lista">
+            <li><span data-t="tg1"><b>Cada orden confirmada</b>, con el nivel barrido, la entrada, el stop y el objetivo.</span></li>
+            <li><span data-t="tg2"><b>Un resumen cada noche</b> con los resultados reales del día y del acumulado.</span></li>
+            <li><span data-t="tg3"><b>Sin registro.</b> No pedimos correo ni datos: entras al canal y sales cuando quieras.</span></li>
+          </ul>
+          <div class="acciones">
+            <a class="boton unirse" href="#unirse">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.9 4.3 18.6 20c-.2 1.1-.9 1.4-1.8.9l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.2-8.3c.4-.4-.1-.6-.6-.2L6 13.6l-4.9-1.5c-1.1-.3-1.1-1.1.2-1.6L20.5 3c.9-.3 1.7.2 1.4 1.3z"/></svg>
+              <span data-t="cta">Entrar al canal gratis</span>
+            </a>
+          </div>
+        </div>
+        <div class="chat revela" id="chat" data-t-aria="aria_chat" aria-label="Ejemplo de mensajes del canal">
+          <div class="canal-cab">
+            <span class="avatar"><svg width="22" height="22" viewBox="0 0 100 100" aria-hidden="true"><circle cx="49" cy="32" r="15" fill="none" stroke="#f3f1ec" stroke-width="6"/><path d="M32 91 L41 55 h16 l9 36" fill="none" stroke="#f3f1ec" stroke-width="6" stroke-linejoin="round"/><path d="M79 17 l2.3 6.1 6.1 2.3 -6.1 2.3 -2.3 6.1 -2.3 -6.1 -6.1 -2.3 6.1 -2.3z" fill="#e7cd8b"/></svg></span>
+            <span><b>Nashira</b><small data-t="tg_sub">canal · lectura de liquidez</small></span>
+          </div>
+          <div class="msg">
+            <div class="cab">🔴 SHORT BTC · 16/10 07:12</div>
+            <div class="m" data-t="tg_nivel">Nivel barrido 82.852,6</div>
+            <div class="m"><span data-t="tg_e">Entrada</span> 82.431,5 · Stop 82.897,6 · <span data-t="tg_o">Objetivo</span> 80.969,1 · 3,1 R</div>
+            <i data-t="descargo">Herramienta de lectura, no es asesoría financiera.</i>
+            <span class="hora">07:12</span>
+          </div>
+          <div class="msg">
+            <div class="cab" data-t="tg_res">📊 Resumen · 16/10</div>
+            <div data-t="tg_res1">1.838 órdenes desde el 18/09 · 28 % al objetivo · −0,04 R por orden.</div>
+            <div data-t="tg_res2">Todo se publica, también lo que sale mal.</div>
+            <span class="hora">21:00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="parte" id="limites">
+    <div class="env">
+      <div class="cabecera revela">
+        <div><div class="ojo" data-t="l_ojo">Nuestros límites</div><h2><span data-t="l_h2a">Lo que nunca</span> <em data-t="l_h2b">vas a leer aquí</em></h2></div>
+      </div>
+      <div class="limites revela">
+        <div class="limite"><span class="n">01</span><h3 data-t="l1h">Que vas a ganar</h3><p data-t="l1p">Con la muestra que llevamos no se puede afirmar. Lo diremos el día que se pueda.</p></div>
+        <div class="limite"><span class="n">02</span><h3 data-t="l2h">Solo la cifra bonita</h3><p data-t="l2p">Cada orden se sigue hasta su final y se publica, también las que tocan el stop.</p></div>
+        <div class="limite"><span class="n">03</span><h3 data-t="l3h">Que sabemos cuando no</h3><p data-t="l3p">Si algo no se pudo medir, se dice. Nunca se pinta como si estuviera bien.</p></div>
+        <div class="limite"><span class="n">04</span><h3 data-t="l4h">Pedirte dinero o claves</h3><p data-t="l4p">Nashira solo lee el mercado. No opera por ti ni toca ninguna cuenta.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="cierre" id="unirse">
+    <div class="foto-capa"><div class="foto-par"><div class="foto" role="img" data-t-aria="aria_via" aria-label="La Vía Láctea sobre la Tierra, fotografiada desde la Estación Espacial Internacional"></div></div></div>
+    <div class="aura" aria-hidden="true"></div>
+    <div class="env">
+      <div class="ojo" data-t="z_ojo">Empieza hoy</div>
+      <h2><span data-t="z_h2a">Una estrella sirve para orientarse</span> <em data-t="z_h2b">porque no se mueve.</em></h2>
+      <p data-t="z_p">Entra al canal gratis y lee la liquidez con Nashira.</p>
+      <div class="acciones">
+        <a class="boton unirse" href="#unirse">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21.9 4.3 18.6 20c-.2 1.1-.9 1.4-1.8.9l-5-3.7-2.4 2.3c-.3.3-.5.5-1 .5l.4-5.1 9.2-8.3c.4-.4-.1-.6-.6-.2L6 13.6l-4.9-1.5c-1.1-.3-1.1-1.1.2-1.6L20.5 3c.9-.3 1.7.2 1.4 1.3z"/></svg>
+          <span data-t="cta">Entrar al canal gratis</span>
+        </a>
+      </div>
+      <p class="pronto" data-t="pronto">El canal abre en los próximos días. Vuelve pronto.</p>
+    </div>
+    <div class="credito" data-t="credito">Foto: NASA · Estación Espacial Internacional</div>
+  </section>
+</main>
+
+<footer>
+  <div class="env">
+    <a class="marca" href="#inicio" aria-label="Nashira"><svg class="garg" width="30" height="30" viewBox="0 0 100 100" aria-hidden="true"><g transform="rotate(-11 50 50)">
+          <circle class="luz" cx="50" cy="50" r="40"/>
+          <ellipse class="disco" cx="50" cy="50" rx="45" ry="8.5" pathLength="1"/>
+          <path class="arco" d="M 27.5 49 A 22.5 22.5 0 0 1 72.5 49" pathLength="1"/>
+          <path class="arco-b" d="M 32 53 A 18.5 18.5 0 0 0 68 53"/>
+          <circle class="sombra" cx="50" cy="50" r="16.5"/>
+          <circle class="anillo" cx="50" cy="50" r="17.3" pathLength="1"/>
+          <g clip-path="url(#c-delante)">
+            <ellipse class="disco" cx="50" cy="50" rx="45" ry="8.5" pathLength="1"/>
+            <ellipse class="flujo" cx="50" cy="50" rx="45" ry="8.5" pathLength="100"/>
+            <ellipse class="flujo b" cx="50" cy="50" rx="41" ry="7.2" pathLength="100"/>
+          </g>
+        </g></svg><b>NASHIRA</b></a>
+    <span data-t="pie">No es asesoría financiera. Operar con apalancamiento puede hacerte perder todo el capital.</span>
+    <span>© 2026 Nashira</span>
+  </div>
+</footer>
+
+<script>
+// ── ENLACES, en un solo sitio. Vacíos: los botones llevan al cierre y avisan de que el canal abre pronto.
+const CANAL = 'https://t.me/Nashiratm';
+const BITUNIX = '';
+
+// ── LA CINTA en bucle: una segunda copia seguida de la primera (oculta para lectores de pantalla).
+(() => {
+  const g = document.querySelector('.cinta .grupo');
+  if (g) { const c = g.cloneNode(true); c.setAttribute('aria-hidden', 'true'); g.after(c); }
+})();
+
+// ── IDIOMAS. El español va escrito en la página: se lee completo aunque no corra nada.
+const T = {"en": {"nav1": "Live read", "nav2": "Markets", "nav3": "Terminal", "canal": "Free channel", "aria_agujero": "A black hole with its orange and white gas disk, the ring of light bent by gravity and a planet", "ojo": "Market gravity", "h1a": "Liquidity pulls price.", "h1b": "Nashira shows you where.", "bajada": "It marks where the big orders are waiting, confirms every sweep and explains the reason behind every order.", "cta": "Join the free channel", "cta2": "See a real read", "letra": "No sign-up, no email, no card.", "vivo": "Live 24/7", "c1": "orders recorded", "oro": "GOLD", "c3": "reach the target", "c4": "Everything published, including what goes wrong", "g_ojo": "A real read", "g_h2a": "A BTC sweep,", "g_h2b": "candle by candle", "g_p": "October 16, 2026. Price swept a high where liquidity was waiting and Nashira marked it step by step, with the exact time it knew.", "aria_mesa": "Replay of a real BTC sweep read by Nashira", "g_fecha": "16/10/2026 · Ecuador time (UTC−5)", "repetir": "↺ Replay", "aria_velas": "BTC 3-minute candles on October 16, 2026, from 05:36 to 08:09, with the 82,852.6 high swept at 06:25 and the 07:12 Short order", "e1": "LEVEL", "e1d": "82,852.6 · liquidity waiting", "e2": "SWEEP", "e2d": "price takes the liquidity at 82,852.6", "e5": "ORDER", "e5d": "limit 82,431.5 · stop 82,897.6 · target 80,969.1", "e6": "Price never came back to 82,431.5 and the order did not fill. That gets published too.", "m_ojo": "Markets", "m_h2a": "Five markets,", "m_h2b": "every result", "m_p": "Every order Nashira gave since September 18, tracked to its stop or target with the same rule. No cherry-picking.", "t1": "Market", "t2": "Orders", "t3": "Reach the target", "t4": "Average result", "oro_n": "Gold", "total": "All", "m_nota": "Average result per order, after fees, in R (one R is what you risk down to the stop). No market is yet distinguishable from chance: that is why Nashira is a tool for reading the market, not a signal machine.", "x_ojo": "The terminal", "x_h2a": "Everything to read the market,", "x_h2b": "on one screen", "x_p": "The tools of a professional terminal, in the browser and on your phone, plus what nobody else measures.", "r1h": "Confirmed sweeps", "r1p": "Nashira only tags a sweep once it is confirmed, and the tag lands on the turning candle.", "r2h": "Live liquidity", "r2p": "The timeframe’s liquidity line, the zones that matter and the liquidation heatmap from 10× to 100×.", "r4h": "The reason behind every order", "r4p": "Which level was swept, when the order was born, the entry, the stop and the target, one tap away.", "x1": "timeframes", "x2": "windows", "x3": "indicators", "x4": "drawing tools", "x5": "chart types", "bx": "Trade with Nashira on", "alt_terminal": "The Nashira terminal: BTC on 5 minutes with Short and Long tags at the turns, zones and the liquidity line", "tg_h2a": "Every order,", "tg_h2b": "in your pocket", "tg1": "<b>Every confirmed order</b>, with the swept level, entry, stop and target.", "tg2": "<b>A nightly recap</b> with the real results of the day and to date.", "tg3": "<b>No sign-up.</b> We ask for no email or data: join the channel and leave whenever you want.", "aria_chat": "Example channel messages", "tg_sub": "channel · liquidity reading", "tg_e": "Entry", "tg_o": "Target", "descargo": "A market-reading tool, not financial advice.", "tg_nivel": "Swept level 82,852.6", "tg_res": "📊 Recap · 16/10", "tg_res1": "1,838 orders since 18/09 · 28% hit the target · −0.04 R per order.", "tg_res2": "Everything is published, including what goes wrong.", "l_ojo": "Our limits", "l_h2a": "What you will", "l_h2b": "never read here", "l1h": "That you will win", "l1p": "With our sample so far it cannot be claimed. We will say so the day it can.", "l2h": "Only the pretty number", "l2p": "Every order is tracked to its end and published, including the ones that hit the stop.", "l3h": "That we know when we don’t", "l3p": "If something could not be measured, we say so. It is never shown as if it were fine.", "l4h": "Asking for money or keys", "l4p": "Nashira only reads the market. It does not trade for you or touch any account.", "aria_via": "The Milky Way over Earth, photographed from the International Space Station", "z_ojo": "Start today", "z_h2a": "A star guides you", "z_h2b": "because it does not move.", "z_p": "Join the free channel and read liquidity with Nashira.", "pronto": "The channel opens in the coming days. Check back soon.", "credito": "Photo: NASA · International Space Station", "pie": "Not financial advice. Leveraged trading can lose you all of your capital.", "abrir": "See the indicator"}, "pt": {"nav1": "Leitura real", "nav2": "Mercados", "nav3": "Terminal", "canal": "Canal grátis", "aria_agujero": "Um buraco negro com seu disco de gás laranja e branco, o anel de luz curvado pela gravidade e um planeta", "ojo": "Gravidade de mercado", "h1a": "A liquidez atrai o preço.", "h1b": "O Nashira mostra onde.", "bajada": "Marca onde as grandes ordens estão esperando, confirma cada varredura e explica o porquê de cada ordem.", "cta": "Entrar no canal grátis", "cta2": "Ver uma leitura real", "letra": "Sem cadastro, sem e-mail, sem cartão.", "vivo": "Ao vivo 24/7", "c1": "ordens registradas", "oro": "OURO", "c3": "chegam ao alvo", "c4": "Tudo publicado, inclusive o que dá errado", "g_ojo": "Uma leitura real", "g_h2a": "Uma varredura de BTC,", "g_h2b": "vela a vela", "g_p": "16 de outubro de 2026. O preço varreu uma máxima onde havia liquidez esperando e o Nashira marcou passo a passo, com a hora exata em que soube.", "aria_mesa": "Repetição de uma varredura real de BTC lida pelo Nashira", "g_fecha": "16/10/2026 · hora do Equador (UTC−5)", "repetir": "↺ Repetir", "aria_velas": "Velas de 3 minutos de BTC em 16 de outubro de 2026, de 05:36 a 08:09, com a máxima de 82.852,6 varrida às 06:25 e a ordem Short das 07:12", "e1": "NÍVEL", "e1d": "82.852,6 · liquidez esperando", "e2": "VARREDURA", "e2d": "o preço leva a liquidez de 82.852,6", "e5": "ORDEM", "e5d": "limite 82.431,5 · stop 82.897,6 · alvo 80.969,1", "e6": "O preço não voltou a 82.431,5 e a ordem não foi executada. Isso também é publicado.", "m_ojo": "Mercados", "m_h2a": "Cinco mercados,", "m_h2b": "todos os resultados", "m_p": "Cada ordem que o Nashira deu desde 18 de setembro, acompanhada até o stop ou o alvo com a mesma regra. Sem escolher as boas.", "t1": "Mercado", "t2": "Ordens", "t3": "Chegam ao alvo", "t4": "Resultado médio", "oro_n": "Ouro", "total": "Todos", "m_nota": "Resultado médio por ordem, com taxas, em R (um R é o que se arrisca até o stop). Nenhum mercado se distingue ainda do acaso: por isso o Nashira é uma ferramenta para ler o mercado, não uma máquina de sinais.", "x_ojo": "O terminal", "x_h2a": "Tudo para ler o mercado,", "x_h2b": "em uma tela", "x_p": "As ferramentas de um terminal profissional, no navegador e no celular, e o que nenhum outro mede.", "r1h": "Varreduras confirmadas", "r1p": "O Nashira só marca uma varredura quando ela se confirma, e a etiqueta cai na vela da virada.", "r2h": "Liquidez ao vivo", "r2p": "A linha de liquidez do tempo gráfico, as zonas que importam e o mapa de calor de liquidações de 10× a 100×.", "r4h": "O porquê de cada ordem", "r4p": "Qual nível foi varrido, quando a ordem nasceu, a entrada, o stop e o alvo, a um toque.", "x1": "tempos gráficos", "x2": "janelas", "x3": "indicadores", "x4": "ferramentas de desenho", "x5": "tipos de gráfico", "bx": "Opere com o Nashira na", "alt_terminal": "O terminal do Nashira: BTC em 5 minutos com etiquetas Short e Long nas viradas, zonas e a linha de liquidez", "tg_h2a": "Cada ordem,", "tg_h2b": "no seu bolso", "tg1": "<b>Cada ordem confirmada</b>, com o nível varrido, a entrada, o stop e o alvo.", "tg2": "<b>Um resumo toda noite</b> com os resultados reais do dia e acumulados.", "tg3": "<b>Sem cadastro.</b> Não pedimos e-mail nem dados: entre no canal e saia quando quiser.", "aria_chat": "Exemplo de mensagens do canal", "tg_sub": "canal · leitura de liquidez", "tg_e": "Entrada", "tg_o": "Alvo", "descargo": "Ferramenta de leitura, não é recomendação financeira.", "tg_nivel": "Nível varrido 82.852,6", "tg_res": "📊 Resumo · 16/10", "tg_res1": "1.838 ordens desde 18/09 · 28 % no alvo · −0,04 R por ordem.", "tg_res2": "Tudo é publicado, inclusive o que dá errado.", "l_ojo": "Nossos limites", "l_h2a": "O que você nunca", "l_h2b": "vai ler aqui", "l1h": "Que você vai ganhar", "l1p": "Com a amostra que temos não dá para afirmar. Diremos no dia em que der.", "l2h": "Só o número bonito", "l2p": "Cada ordem é acompanhada até o fim e publicada, inclusive as que batem no stop.", "l3h": "Que sabemos quando não", "l3p": "Se algo não pôde ser medido, dizemos. Nunca aparece como se estivesse certo.", "l4h": "Pedir dinheiro ou chaves", "l4p": "O Nashira só lê o mercado. Não opera por você nem toca em nenhuma conta.", "aria_via": "A Via Láctea sobre a Terra, fotografada da Estação Espacial Internacional", "z_ojo": "Comece hoje", "z_h2a": "Uma estrela orienta", "z_h2b": "porque não se move.", "z_p": "Entre no canal grátis e leia a liquidez com o Nashira.", "pronto": "O canal abre nos próximos dias. Volte em breve.", "credito": "Foto: NASA · Estação Espacial Internacional", "pie": "Não é recomendação financeira. Operar alavancado pode fazer você perder todo o capital.", "abrir": "Ver o indicador"}};
+const ES = {};
+document.querySelectorAll('[data-t]').forEach((el) => { ES[el.dataset.t] = el.innerHTML; });
+document.querySelectorAll('[data-t-alt]').forEach((el) => { ES[el.dataset.tAlt] = el.alt; });
+document.querySelectorAll('[data-t-aria]').forEach((el) => { ES[el.dataset.tAria] = el.getAttribute('aria-label'); });
+let IDIOMA = 'es';
+function idioma(cual) {
+  const d = cual === 'es' ? ES : T[cual];
+  if (!d) return;
+  IDIOMA = cual;
+  document.documentElement.lang = cual;
+  document.querySelectorAll('[data-t]').forEach((el) => { if (d[el.dataset.t] != null) el.innerHTML = d[el.dataset.t]; });
+  document.querySelectorAll('[data-t-alt]').forEach((el) => { if (d[el.dataset.tAlt]) el.alt = d[el.dataset.tAlt]; });
+  document.querySelectorAll('[data-t-aria]').forEach((el) => { if (d[el.dataset.tAria]) el.setAttribute('aria-label', d[el.dataset.tAria]); });
+  document.querySelectorAll('[data-idioma]').forEach((b) => b.setAttribute('aria-pressed', String(b.dataset.idioma === cual)));
+  try { localStorage.setItem('nashira.idioma', cual); } catch (e) { /* sin almacén */ }
+  if (window.repintarGrafico) window.repintarGrafico();
+}
+document.querySelectorAll('[data-idioma]').forEach((b) => b.addEventListener('click', () => idioma(b.dataset.idioma)));
+let inicial = null;
+try { inicial = localStorage.getItem('nashira.idioma'); } catch (e) { /* sin almacén */ }
+if (!inicial) { const n = (navigator.language || 'es').slice(0, 2); inicial = n === 'pt' ? 'pt' : n === 'es' ? 'es' : 'en'; }
+if (inicial !== 'es') idioma(inicial);
+
+if (CANAL) document.querySelectorAll('a.unirse').forEach((a) => { a.href = CANAL; a.target = '_blank'; a.rel = 'noopener'; });
+else document.body.classList.add('sin-canal');
+if (BITUNIX) document.querySelectorAll('a.bitunix').forEach((a) => { a.href = BITUNIX; a.target = '_blank'; a.rel = 'noopener sponsored'; a.hidden = false; });
+
+// ── La barra se vuelve sólida al bajar; lo que entra en pantalla se desliza a su sitio.
+const barra = document.getElementById('barra');
+const marcarBarra = () => barra.classList.toggle('solida', scrollY > 40);
+addEventListener('scroll', marcarBarra, { passive: true }); marcarBarra();
+const vigia = new IntersectionObserver((es) => es.forEach((e) => { if (e.isIntersecting) { e.target.classList.add('vista'); vigia.unobserve(e.target); } }), { threshold: .18 });
+document.querySelectorAll('.revela, #tabla, #chat').forEach((el) => vigia.observe(el));
+
+// ── El cierre: al bajar, la foto se desplaza más despacio que el texto (está más lejos).
+(() => {
+  const s = document.querySelector('.cierre'), capa = s && s.querySelector('.foto-par');
+  if (!capa || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  let pendiente = false;
+  const mover = () => {
+    pendiente = false;
+    const r = s.getBoundingClientRect();
+    if (r.bottom < -200 || r.top > innerHeight + 200) return;
+    const k = Math.max(-110, Math.min(110, (r.top + r.height / 2 - innerHeight / 2) * 0.2));
+    capa.style.transform = `translate3d(0, ${k.toFixed(1)}px, 0)`;
+  };
+  addEventListener('scroll', () => { if (!pendiente) { pendiente = true; requestAnimationFrame(mover); } }, { passive: true });
+  mover();
+})();
+
+// ── Las cifras cuentan al aparecer: de cero a su valor, con su formato (1.838 · 28 % · +0,10 R). Al
+// terminar queda el texto original tal cual.
+(() => {
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  const fmt = (v, dec) => { const [e, f] = Math.abs(v).toFixed(dec).split('.'); return e.replace(/\B(?=(\d{3})+(?!\d))/g, '.') + (f ? ',' + f : ''); };
+  function contar(el, retraso) {
+    const txt = el.textContent.trim(), m = txt.match(/^([+−-]?)([\d.]+)(?:,(\d+))?(.*)$/);
+    if (!m || txt.includes(':')) return;
+    const dec = m[3] ? m[3].length : 0, fin = parseFloat(m[2].replace(/\./g, '') + (m[3] ? '.' + m[3] : ''));
+    const t0 = performance.now() + retraso, dur = 1500;
+    el.textContent = m[1] + fmt(0, dec) + m[4];
+    (function paso(ms) {
+      const k = Math.min(1, Math.max(0, (ms - t0) / dur)), e = 1 - Math.pow(1 - k, 3);
+      el.textContent = k >= 1 ? txt : m[1] + fmt(fin * e, dec) + m[4];
+      if (k < 1) requestAnimationFrame(paso);
+    })(performance.now());
+  }
+  const conIntro = !document.documentElement.classList.contains('sin-intro');
+  const io = new IntersectionObserver((es) => es.forEach((e) => {
+    if (!e.isIntersecting) return;
+    io.unobserve(e.target);
+    const base = conIntro && e.target.closest('.portada') ? 2700 : 150;
+    e.target.querySelectorAll(e.target.dataset.contar).forEach((el, i) => contar(el, base + i * 90));
+  }), { threshold: 0.3 });
+  for (const [g, sel] of [[document.querySelector('.cinta .grupo'), '.num'], [document.getElementById('tabla'), '.num'], [document.querySelector('.cifras'), 'b']]) {
+    if (g) { g.dataset.contar = sel; io.observe(g); }
+  }
+})();
+
+// ── Con ratón: un foco cálido sigue al cursor sobre los paneles y las filas, y los botones principales
+// se acercan un poco a él.
+(() => {
+  if (!matchMedia('(hover: hover) and (pointer: fine)').matches || matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+  document.querySelectorAll('.mesa, .marco-p, .chat, .fila:not(.titulos)').forEach((el) => {
+    el.addEventListener('pointermove', (e) => {
+      const r = el.getBoundingClientRect();
+      el.style.setProperty('--mx', `${e.clientX - r.left}px`); el.style.setProperty('--my', `${e.clientY - r.top}px`); el.style.setProperty('--foco', 1);
+    });
+    el.addEventListener('pointerleave', () => el.style.setProperty('--foco', 0));
+  });
+  document.querySelectorAll('.boton').forEach((b) => {
+    b.addEventListener('pointermove', (e) => {
+      const r = b.getBoundingClientRect();
+      b.style.translate = `${((e.clientX - r.left - r.width / 2) * 0.16).toFixed(1)}px ${((e.clientY - r.top - r.height / 2) * 0.26).toFixed(1)}px`;
+    });
+    b.addEventListener('pointerleave', () => { b.style.translate = ''; });
+  });
+})();
+
+// ── El terminal se inclina un poco hacia el ratón.
+(() => {
+  const m = document.getElementById('marco-p');
+  if (!m || matchMedia('(prefers-reduced-motion: reduce)').matches || innerWidth < 1000) return;
+  m.parentElement.addEventListener('pointermove', (e) => {
+    const r = m.getBoundingClientRect(), x = (e.clientX - r.left) / r.width - .5, y = (e.clientY - r.top) / r.height - .5;
+    m.style.transform = `rotateY(${-7 + x * 8}deg) rotateX(${3 - y * 6}deg)`;
+  });
+  m.parentElement.addEventListener('pointerleave', () => { m.style.transform = ''; });
+})();
+
+// ── EL ESPACIO de verdad, detrás de toda la página.
+// Nebulosas: nubes de color muy tenues, pintadas una vez a media resolución (son suaves) y que derivan con CSS.
+// Estrellas: un campo en 3D. Cada estrella tiene profundidad; vienen hacia ti muy despacio, titilan y, al
+// hacer scroll, viajas entre ellas: se aceleran, se estiran en trazos y las cercanas pasan de largo. De vez en
+// cuando cruza una estrella fugaz. Si el sistema pide menos movimiento, el cielo queda quieto.
+(() => {
+  const neb = document.getElementById('nebulosa'), cv = document.getElementById('estrellas');
+  const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  function nebulosas() {
+    const w = Math.max(320, Math.round(innerWidth * 0.5)), h = Math.max(320, Math.round(innerHeight * 0.5));
+    neb.width = w; neb.height = h;
+    const x = neb.getContext('2d');
+    let s = 20261016;
+    const az = () => (s = (s * 16807) % 2147483647) / 2147483647;
+    x.globalCompositeOperation = 'lighter';
+    // Cuatro nubes, cada una hecha de varias manchas del mismo tono: cobre, azul, violeta y oro.
+    for (const [cx, cy, tono, n] of [[0.84, 0.16, '255,140,70', 9], [0.08, 0.55, '70,115,215', 10],
+      [0.66, 0.88, '150,95,215', 8], [0.32, 0.12, '255,200,130', 6]]) {
+      for (let i = 0; i < n; i++) {
+        const px = (cx + (az() - 0.5) * 0.35) * w, py = (cy + (az() - 0.5) * 0.3) * h;
+        const r = (0.08 + az() * 0.22) * Math.max(w, h), a = 0.012 + az() * 0.03;
+        const g = x.createRadialGradient(px, py, 0, px, py, r);
+        g.addColorStop(0, `rgba(${tono},${a})`); g.addColorStop(1, 'rgba(0,0,0,0)');
+        x.fillStyle = g; x.fillRect(0, 0, w, h);
+      }
+    }
+  }
+
+  const x = cv.getContext('2d');
+  let w = 0, h = 0, f = 1, cx = 0, cy = 0;
+  const estrellas = [];
+  // Una estrella nueva: posición lateral al azar, profundidad z (1 lejos, 0 junto a ti), brillo y color.
+  function nueva(e, z) {
+    e.x = (Math.random() * 2 - 1) * 1.7; e.y = (Math.random() * 2 - 1) * 1.7; e.z = z;
+    const m = Math.pow(Math.random(), 7), tono = Math.random();
+    e.m = m; e.b = 0.25 + 0.75 * Math.pow(Math.random(), 2);
+    e.col = tono < 0.6 ? `255,${214 + Math.round(tono * 50)},${178 + Math.round(tono * 70)}`
+      : `${196 + Math.round((1 - tono) * 120)},${214 + Math.round((1 - tono) * 40)},255`;
+    e.fase = Math.random() * 6.28; e.vel = 0.5 + Math.random() * 2.5; e.edad = 0; e.sx = null;
+  }
+  function medir() {
+    const dpr = Math.min(devicePixelRatio || 1, 1.5);
+    w = innerWidth; h = innerHeight;
+    cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+    x.setTransform(dpr, 0, 0, dpr, 0, 0);
+    f = Math.max(w, h) * 0.32; cx = w * 0.5; cy = h * 0.42;
+    const n = Math.min(1100, Math.round((w * h) / 1500));
+    while (estrellas.length < n) { const e = {}; nueva(e, Math.random()); e.edad = 1; estrellas.push(e); }
+    estrellas.length = n;
+  }
+
+  // La velocidad del viaje: una deriva lenta siempre, más la del scroll (suavizada).
+  let ultimoY = scrollY, empuje = 0, previo = 0;
+  const fugaz = { vida: 0, espera: 4 + Math.random() * 6 };
+  function pintar(ms) {
+    const dt = previo ? Math.min(0.05, (ms - previo) / 1000) : 0.016;
+    previo = ms;
+    const dy = scrollY - ultimoY; ultimoY = scrollY;
+    empuje = empuje * 0.9 + (dy / Math.max(dt, 0.001)) * 0.1;
+    const v = 0.012 + empuje * 0.00032;
+    const rapido = Math.abs(v) > 0.06;
+    x.clearRect(0, 0, w, h);
+    const tt = ms / 1000;
+    for (const e of estrellas) {
+      e.z -= v * dt;
+      e.edad = Math.min(1, e.edad + dt * 1.5);
+      if (e.z < 0.04) { nueva(e, 1); continue; }
+      if (e.z > 1) { nueva(e, 0.05 + Math.random() * 0.3); continue; }
+      const sx = cx + (e.x / e.z) * f, sy = cy + (e.y / e.z) * f;
+      if (sx < -30 || sx > w + 30 || sy < -30 || sy > h + 30) { if (v > 0) nueva(e, 1); e.sx = null; continue; }
+      const cerca = 1 / e.z;
+      const r = Math.min(3.2, (0.35 + e.m * 1.8) * Math.pow(cerca, 0.55));
+      const lejos = Math.min(1, (1 - e.z) * 4);
+      const a = e.b * lejos * e.edad * (0.72 + 0.28 * Math.sin(tt * e.vel + e.fase));
+      if (a < 0.02) { e.sx = sx; e.sy = sy; continue; }
+      if (rapido && e.sx !== null) {
+        x.strokeStyle = `rgba(${e.col},${a})`; x.lineWidth = r;
+        x.beginPath(); x.moveTo(e.sx, e.sy); x.lineTo(sx, sy); x.stroke();
+      } else if (r < 1.1) {
+        x.fillStyle = `rgba(${e.col},${a})`; x.fillRect(sx - r, sy - r, r * 2, r * 2);
+      } else {
+        x.fillStyle = `rgba(${e.col},${a * 0.18})`;
+        x.beginPath(); x.arc(sx, sy, r * 3, 0, 6.2832); x.fill();
+        x.fillStyle = `rgba(${e.col},${a})`;
+        x.beginPath(); x.arc(sx, sy, r, 0, 6.2832); x.fill();
+      }
+      e.sx = sx; e.sy = sy;
+    }
+    // La estrella fugaz
+    fugaz.espera -= dt;
+    if (fugaz.espera <= 0 && fugaz.vida <= 0) {
+      fugaz.vida = 1; fugaz.x = w * (0.15 + Math.random() * 0.7); fugaz.y = h * (0.05 + Math.random() * 0.35);
+      const ang = (Math.random() < 0.5 ? 0.35 : Math.PI - 0.35) + (Math.random() - 0.5) * 0.3;
+      fugaz.dx = Math.cos(ang); fugaz.dy = Math.sin(ang); fugaz.largo = 120 + Math.random() * 140;
+      fugaz.espera = 7 + Math.random() * 9;
+    }
+    if (fugaz.vida > 0) {
+      fugaz.vida -= dt * 1.1;
+      const avance = (1 - fugaz.vida) * 520, hx = fugaz.x + fugaz.dx * avance, hy = fugaz.y + fugaz.dy * avance;
+      const g = x.createLinearGradient(hx, hy, hx - fugaz.dx * fugaz.largo, hy - fugaz.dy * fugaz.largo);
+      const a = Math.sin(Math.max(0, fugaz.vida) * Math.PI);
+      g.addColorStop(0, `rgba(255,246,230,${0.9 * a})`); g.addColorStop(1, 'rgba(255,246,230,0)');
+      x.strokeStyle = g; x.lineWidth = 1.6;
+      x.beginPath(); x.moveTo(hx, hy); x.lineTo(hx - fugaz.dx * fugaz.largo, hy - fugaz.dy * fugaz.largo); x.stroke();
+    }
+    if (!quieto) requestAnimationFrame(pintar);
+  }
+
+  let anchoPrevio = 0;
+  function ajustar() {
+    // En el móvil la barra del navegador cambia el alto al bajar: las nebulosas solo se rehacen si cambia el ancho.
+    if (innerWidth !== anchoPrevio) { anchoPrevio = innerWidth; nebulosas(); }
+    medir();
+    if (quieto) pintar(0);
+  }
+  ajustar();
+  addEventListener('resize', ajustar);
+  requestAnimationFrame(pintar);
+})();
+
+// EL AGUJERO NEGRO, VERSIÓN B: shader WebGL propio inspirado en Gargantua.
+// Cada píxel lanza un rayo que se curva alrededor del agujero (aproximación de Schwarzschild) y atraviesa
+// un disco de gas CON VOLUMEN: grumos de nube, franjas de polvo, temperatura (blanco dentro, naranja y
+// óxido fuera), giro diferencial y efecto Doppler. El anillo de fotones brilla donde los rayos rozan la
+// esfera de fotones. Encima, un planeta con océanos, nubes y atmósfera en capas, iluminado por el disco.
+// Acabado de cine: estrellas de varios tamaños, banda galáctica, viñeta y grano.
+(() => {
+  const c = document.getElementById('agujero');
+  const gl = c.getContext('webgl', { antialias: false, alpha: false, premultipliedAlpha: false, powerPreference: 'high-performance' });
+  const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  if (!gl) { c.style.background = 'radial-gradient(circle at 63% 44%, #3a2416, #050607 60%)'; c.classList.add('listo'); return; }
+
+  const vert = 'attribute vec2 p; void main(){ gl_Position = vec4(p, 0.0, 1.0); }';
+  const frag = `
+#ifdef GL_EXT_shader_texture_lod
+#extension GL_EXT_shader_texture_lod : enable
+#define LEER(tx, st, gx, gy) texture2DGradEXT(tx, st, gx, gy)
+#else
+#define LEER(tx, st, gx, gy) texture2D(tx, st)
+#endif
+precision highp float;
+uniform vec2 res; uniform float t; uniform vec2 centro; uniform float movil;
+// La llegada: 0 al empezar (la cámara, lejos y alta) y 1 cuando ya está junto al agujero.
+uniform float llegada;
+uniform sampler2D tA;
+// Acumulación: cada fotograma se mezcla con el anterior (prev) y lleva su propio desplazamiento de
+// subpíxel (jit) y su propio sorteo de pasos (semilla). La media de varios fotogramas quita la arena de
+// los bordes y suaviza los filos sin coste extra por fotograma.
+uniform sampler2D prev; uniform float mezcla; uniform vec2 jit; uniform float semilla;
+const float TAU = 6.2831853;
+
+float hash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { v += a * noise(p); p = mat2(1.6, 1.2, -1.2, 1.6) * p + 7.3; a *= 0.5; } return v; }
+float fbm6(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 6; i++) { v += a * noise(p); p = mat2(1.6, 1.2, -1.2, 1.6) * p + 7.3; a *= 0.5; } return v; }
+float fbm4(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 4; i++) { v += a * noise(p); p = mat2(1.6, 1.2, -1.2, 1.6) * p + 7.3; a *= 0.5; } return v; }
+float fbm3(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 3; i++) { v += a * noise(p); p = mat2(1.6, 1.2, -1.2, 1.6) * p + 7.3; a *= 0.5; } return v / 0.875; }
+// Ruido en tres dimensiones, para que las nubes del polvo tengan volumen de verdad
+float hash3(vec3 p){ p = fract(p * vec3(0.1031, 0.1030, 0.0973)); p += dot(p, p.yxz + 33.33); return fract((p.x + p.y) * p.z); }
+float noise3(vec3 p){
+  vec3 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(mix(hash3(i), hash3(i + vec3(1, 0, 0)), f.x), mix(hash3(i + vec3(0, 1, 0)), hash3(i + vec3(1, 1, 0)), f.x), f.y),
+             mix(mix(hash3(i + vec3(0, 0, 1)), hash3(i + vec3(1, 0, 1)), f.x), mix(hash3(i + vec3(0, 1, 1)), hash3(i + vec3(1, 1, 1)), f.x), f.y), f.z);
+}
+
+// Media altura del disco: fino junto al agujero y cada vez más abombado hacia fuera, como en Gargantua.
+float alto(float r){ return 0.04 + 0.025 * pow(r, 1.45); }
+
+// El gas: su textura (nubes enroscadas, detalle fino, polvo y grumos) se precalcula UNA vez en una
+// textura polar (ángulo x radio) al cargar. Aquí solo se lee.
+// El giro: dentro gira más rápido que fuera. Si se girara sin más, con los minutos esa diferencia estira
+// cualquier nube hasta convertirla en anillos finos. Por eso hay dos capas que fluyen y se relevan
+// (cuando una vuelve a empezar, la otra está en su mejor momento): el gas corre sin parar y nunca se
+// estira más de lo que corre en unos segundos.
+// Corto: las dos capas apenas se diferencian, así el relevo no emborrona (sería una doble exposición).
+const float PERIODO = 8.0;
+// pie: lo que ocupa un píxel sobre el disco, (a lo largo de la órbita, a lo ancho del radio), en mundo.
+// Dos zonas, como en la foto: junto al agujero, gas caliente y brillante en hebras finas (blanco y crema);
+// hacia fuera, polvo frío en nubes turbulentas (cobre, óxido, pardo casi negro) que tapa la luz de detrás.
+vec4 gas(vec3 q, vec3 dir, vec2 pie){
+  float r = length(q.xz);
+  if (r < 2.3 || r > 14.3) return vec4(0.0);
+  float H = alto(r);
+  if (abs(q.y) > 2.4 * H) return vec4(0.0);
+  float giro = 0.9 / pow(r, 1.5);
+  float base = atan(q.z, q.x) + q.y * 0.35;
+  float f0 = fract(t / PERIODO), f1 = fract(t / PERIODO + 0.5);
+  // Peso de la capa 0: nulo cuando vuelve a empezar, entero la mayor parte del tiempo. Así casi siempre
+  // se ve una sola capa, nítida, y el relevo es breve.
+  float peso = smoothstep(0.0, 0.3, f0) * (1.0 - smoothstep(0.7, 1.0, f0));
+  float y = (r - 2.3) / 12.0;
+  vec2 st0 = vec2((base - giro * f0 * PERIODO) / TAU, y);
+  vec2 st1 = vec2((base - giro * f1 * PERIODO) / TAU, y);
+  // Lectura anisótropa: se promedia a lo ancho (donde la lente comprime el disco) sin borrar las
+  // hebras a lo largo de la órbita.
+  vec2 gx = vec2(pie.x / (r * TAU), 0.0), gy = vec2(0.0, pie.y / 12.0);
+  vec4 A = mix(LEER(tA, st1, gx, gy), LEER(tA, st0, gx, gy), peso);
+  float h1 = A.r, h2 = A.g, nube = A.b, grumo = A.a;
+  float yv = q.y / H;
+  // Nubes en 3D en el polvo exterior: un ruido de tres dimensiones (x, altura, z) que gira con el gas
+  // (mismas dos capas que la textura). Visto de canto, el polvo tiene así masas redondeadas con relieve en
+  // altura; la textura plana, vista de lado, solo daba pinceladas o capas finas como pelo peinado.
+  float temp0 = pow(2.3 / r, 0.85);
+  if (temp0 < 0.62) {
+    float a0 = base - giro * f0 * PERIODO, a1 = base - giro * f1 * PERIODO;
+    vec3 c0 = vec3(r * cos(a0), q.y * 1.6, r * sin(a0)), c1 = vec3(r * cos(a1), q.y * 1.6, r * sin(a1));
+    float d0 = 0.62 * noise3(c0 * 1.3) + 0.38 * noise3(c0 * 3.1 + 5.0);
+    float d1 = 0.62 * noise3(c1 * 1.3) + 0.38 * noise3(c1 * 3.1 + 5.0);
+    float k = smoothstep(0.62, 0.45, temp0);
+    nube = clamp(mix(nube, nube * 0.5 + mix(d1, d0, peso) * 0.6 - 0.05, k), 0.0, 1.0);
+  }
+  // Cada nube tiene su altura: el canto del disco es abultado, no una superficie lisa.
+  float Hn = H * (0.55 + 0.9 * nube);
+  float caida = exp(-2.2 * q.y * q.y / (Hn * Hn));
+  if (caida < 0.004) return vec4(0.0);
+  float hebra = clamp(0.7 * h1 + 0.55 * h2, 0.0, 1.25);
+  float temp = pow(2.3 / r, 0.85);
+  float dentro = smoothstep(0.38, 0.75, temp);
+  vec3 blanco = vec3(1.0, 0.97, 0.93), crema = vec3(0.98, 0.88, 0.74), cobre = vec3(0.78, 0.45, 0.25);
+  vec3 oxido = vec3(0.5, 0.22, 0.1), pardo = vec3(0.2, 0.1, 0.06);
+  vec3 col = mix(pardo, oxido, smoothstep(0.25, 0.65, nube));
+  col = mix(col, cobre, smoothstep(0.3, 0.5, temp) * 0.8);
+  col = mix(col, cobre * 1.15, smoothstep(0.6, 0.85, nube) * (1.0 - dentro) * 0.7);
+  col = mix(col, crema, smoothstep(0.45, 0.75, temp + 0.15 * hebra));
+  col = mix(col, blanco, smoothstep(0.7, 0.95, temp + 0.1 * hebra));
+  col = mix(col, blanco, h1 * h2 * 0.5 * dentro);
+  col = mix(vec3(dot(col, vec3(0.3, 0.59, 0.11))), col, 0.9);
+  float isco = exp(-pow((r - 2.55) / 0.22, 2.0));
+  col = mix(col, blanco * 1.5, isco * 0.8);
+  vec3 vel = normalize(vec3(-q.z, 0.0, q.x));
+  float dop = pow(1.0 + 0.35 * dot(vel, -dir), 2.0);
+  // El borde exterior no es un corte: se deshilacha en jirones a distinta distancia según la nube.
+  // Corto y recortado por las nubes: un borde largo y difuso sería una niebla que, vista de canto, lo
+  // emborrona todo.
+  float fuera = 9.5 + 4.0 * (nube - 0.5) + 1.6 * grumo;
+  float borde = smoothstep(2.3, 2.7, r) * (1.0 - smoothstep(fuera - 1.2, fuera + 0.5, r));
+  // Densidad: dentro la llevan las hebras; fuera, las nubes (con hebras dentro de ellas).
+  // Las hebras dentro de un gas luminoso continuo (no surcos de vinilo con huecos negros).
+  float hebras = (0.25 + 1.7 * hebra * sqrt(hebra)) * mix(0.75, 1.25, nube);
+  // Nubes opacas con huecos casi vacíos: si los huecos fueran niebla, el rayo rasante lo promediaría todo.
+  float nubes = 0.02 + 2.2 * smoothstep(0.42, 0.62, nube);
+  // El polvo de fuera es opaco: se ve su superficie de nubes, no un promedio borroso de todo el disco.
+  float dens = borde * caida * (mix(nubes * 3.0, hebras, dentro) * mix(0.6, 1.35, grumo) + isco * 0.6);
+  // Brillo: el gas caliente de dentro brilla; el polvo de fuera apenas, y por eso se ve oscuro.
+  // Las nubes, iluminadas desde arriba y desde dentro: crema en lo alto de cada nube, pardo en su sombra.
+  float luzNube = (0.2 + 1.4 * smoothstep(0.45, 0.8, nube)) * (0.6 + 0.7 * smoothstep(-1.0, 1.2, yv));
+  // Masas grandes de luz y sombra en el polvo: unas zonas claras, otras casi negras, como en la foto.
+  float masa = mix(mix(0.35, 2.0, smoothstep(0.3, 0.72, grumo)), 1.0, dentro);
+  float brillo = (0.26 + 2.6 * temp * temp) * mix(luzNube, (0.5 + 0.9 * hebra) * mix(0.8, 1.2, nube), dentro) * masa;
+  col = mix(col, mix(cobre, crema, 0.4), smoothstep(0.55, 0.85, grumo) * (1.0 - dentro) * 0.6);
+  // La cara de arriba del disco la ilumina el gas caliente de dentro: se ve crema cuando el rayo llega
+  // desde arriba con algo de ángulo (así llega el arco de arriba, doblado por la lente). De canto, como en
+  // la franja delantera, se ve el costado, en sombra. La cara de abajo (arco inferior), más tenue.
+  float cara = smoothstep(0.06, 0.45, -dir.y) * smoothstep(-0.4, 0.9, yv)
+             + 0.5 * smoothstep(0.06, 0.45, dir.y) * smoothstep(-0.4, 0.9, -yv);
+  col = mix(col, crema * vec3(1.0, 0.97, 0.9), cara * 0.7 * (1.0 - dentro));
+  brillo *= 1.0 + 2.3 * cara * (1.0 - dentro);
+  return vec4(col * dop * brillo, dens);
+}
+
+vec3 cielo(vec3 d){
+  // El cielo gira despacio: las estrellas pasan por detrás del agujero y la lente las curva al pasar.
+  float giroC = t * 0.01;
+  d.xz = mat2(cos(giroC), sin(giroC), -sin(giroC), cos(giroC)) * d.xz;
+  vec3 c = vec3(0.0);
+  vec2 u = vec2(atan(d.z, d.x), asin(clamp(d.y, -1.0, 1.0)));
+  for (int k = 0; k < 3; k++) {
+    float esc = 90.0 + float(k) * 110.0;
+    vec2 g = u * esc, i = floor(g); float h = hash(i + float(k) * 13.0);
+    float umbral = 0.985 + float(k) * 0.004;
+    float brillo = step(umbral, h) * smoothstep(0.45, 0.0, length(fract(g) - 0.5));
+    vec3 tono = mix(vec3(1.0, 0.82, 0.62), vec3(0.75, 0.85, 1.0), hash(i * 1.7));
+    c += tono * brillo * (0.35 + 0.65 * h) * (0.8 + 0.2 * sin(t * 1.7 + h * 50.0));
+  }
+  // Banda galáctica tenue, cruzando en diagonal
+  float banda = exp(-pow((d.y - 0.35 * d.x + 0.1) * 3.2, 2.0));
+  c += vec3(0.09, 0.075, 0.07) * banda * (0.4 + fbm3(u * 6.0));
+  return c;
+}
+
+void main(){
+  vec2 fc = gl_FragCoord.xy + jit;
+  vec2 uv = (fc - res * centro) / res.y;
+  // Casi a ras del disco, como en la foto, con la franja un poco inclinada. Al cargar, la cámara llega
+  // desde lejos y desde arriba (se ve el disco entero desde encima) y baja hasta quedar casi de canto.
+  float e = 1.0 - pow(1.0 - clamp(llegada, 0.0, 1.0), 3.0);
+  vec3 ro = mix(vec3(-6.0, 11.0, -78.0 - movil * 6.0), vec3(0.0, 1.9, -27.0 - movil * 3.0), e);
+  vec3 fw = normalize(-ro), rt = normalize(cross(vec3(-0.12, 1.0, 0.0), fw)), up = cross(fw, rt);
+  vec3 dir = normalize(fw * 1.6 + uv.x * rt + uv.y * up);
+  vec3 p = ro, v = dir;
+  vec3 col = vec3(0.0); float alfa = 0.0; bool tragado = false; float rmin = 1e9; vec3 halo = vec3(0.0);
+  float j = hash(gl_FragCoord.xy + semilla * 37.0);
+  float recorrido = 0.0, angPix = 1.0 / (res.y * 1.6);
+  // Un rayo que pasa lejos del agujero y del disco casi no se curva: solo cielo, sin marchar.
+  // (Salvo que cruce el plano del disco dentro de su radio: entonces hay gas que pintar.)
+  float b = length(cross(ro, dir));
+  float tp = -ro.y / dir.y;
+  bool lejos = b > 19.0 && (tp < 0.0 || length((ro + dir * tp).xz) > 18.0);
+  for (int i = 0; i < 280; i++) {
+    if (lejos) break;
+    float r = length(p);
+    rmin = min(rmin, r);
+    if (r < 1.0) { tragado = true; break; }
+    // El paso NO lleva azar: cerca del agujero, cambiar el paso cambia el camino del rayo, y píxeles
+    // vecinos acabarían en sitios distintos (eso era la arena). El azar va solo en dónde se lee el gas.
+    // Pasos finos cerca del agujero, donde la curva es fuerte; largos lejos, donde el rayo va recto.
+    float dt = clamp(0.01 * r * r + 0.03 * r, 0.02, 1.2);
+    float rr = length(p.xz);
+    float Hh = alto(rr);
+    // Al acercarse al gas, el paso se acorta para entrar justo en su borde: si el rayo saltara dentro,
+    // el borde del disco saldría en escalones.
+    // El gas solo existe hasta 2,3 veces la media altura (con las nubes más altas; más allá, nada).
+    float losa = 2.3 * Hh;
+    if (abs(p.y) > losa && p.y * v.y < 0.0 && rr > 2.0 && rr < 17.0)
+      dt = min(dt, max(0.02, (abs(p.y) - losa) / abs(v.y) + 0.004));
+    // (Con una altura fija y pequeña: si siguiera el grosor del disco, que fuera es enorme, se volvería una
+    // neblina sobre todo el polvo.)
+    if (abs(p.y) < 1.2 && rr > 2.2 && rr < 8.0) {
+      // El resplandor solo alrededor del gas caliente: si llegara lejos, los rayos rasantes lo
+      // acumularían a lo largo del disco y saldría una varilla recta de lado a lado.
+      float cal = pow(2.4 / rr, 1.6) * smoothstep(2.2, 2.8, rr) * (1.0 - smoothstep(3.5, 8.0, rr));
+      halo += (1.0 - alfa) * vec3(1.0, 0.8, 0.6) * cal * exp(-abs(p.y) / 0.3) * dt * 0.05;
+    }
+    if (abs(p.y) < losa && rr > 2.0 && rr < 17.0) {
+      // Pasos según el grosor del disco: finos dentro (donde es delgado y hay detalle), más largos fuera.
+      // Con pasos fijos y diminutos, un rayo casi de canto se quedaba sin pasos a mitad del disco.
+      dt = min(dt, clamp(0.2 * Hh, 0.03, 0.2));
+      // El tamaño del píxel sobre el disco: crece con la distancia; a lo ancho del radio, además, cuanto
+      // más rasante entra el rayo y cuanto más lo ha doblado el agujero (las imágenes de la lente, los
+      // arcos de arriba y de abajo, comprimen el disco en una franja fina). Moderado: lo que quede de
+      // dientes de sierra lo quita la acumulación de fotogramas.
+      float w = recorrido * angPix;
+      float doblez = acos(clamp(dot(v, dir), -1.0, 1.0));
+      vec2 pie = vec2(w, w * min(1.0 / max(abs(v.y), 0.01), 1.6) * (1.0 + 0.7 * max(0.0, doblez - 1.2)));
+      vec4 g = gas(p + v * dt * (j - 0.5), v, pie);
+      float a = clamp(g.a * dt * 3.4, 0.0, 1.0);
+      col += (1.0 - alfa) * g.rgb * a; alfa += (1.0 - alfa) * a;
+      if (alfa > 0.985) break;
+      // En los huecos vacíos del polvo, el siguiente paso es largo: no hay nada que leer.
+      if (g.a < 0.03) dt = min(dt * 2.2, 0.4);
+    }
+    vec3 h = cross(p, v);
+    v = normalize(v - 1.5 * dot(h, h) * p / pow(r, 5.0) * dt);
+    p += v * dt;
+    recorrido += dt;
+    if (r > 70.0 || (r > 20.0 && dot(p, v) > 0.0)) break;
+  }
+  // Junto al agujero la lente estira las estrellas en rayas que parecen arañazos de película: allí el cielo
+  // se apaga (cuanto más se ha doblado el rayo, menos estrellas).
+  float dobla = acos(clamp(dot(v, dir), -1.0, 1.0));
+  if (!tragado) col += (1.0 - alfa) * cielo(v) * mix(0.1, 1.0, smoothstep(0.5, 0.08, dobla));
+  col += halo;
+  // El anillo de fotones: los rayos que rozan la esfera de fotones (1,5) se iluminan
+  // (fino y nítido, como el filo de luz que rodea la sombra en la foto).
+  col += (1.0 - alfa * 0.5) * vec3(1.0, 0.93, 0.85) * 0.006 / (abs(rmin - 1.53) + 0.006) * (tragado ? 0.0 : 1.0);
+  col += (1.0 - alfa * 0.6) * vec3(1.0, 0.9, 0.8) * 0.0025 / (abs(rmin - 1.6) + 0.004) * (tragado ? 0.0 : 1.0);
+  col = 1.0 - exp(-col * 1.12);
+  col = pow(col, vec3(1.08));
+
+  // El planeta, delante de todo: su borde cruza en diagonal abajo a la derecha
+  vec2 s = fc / res.y;
+  // El borde del planeta pasa por dos puntos de la pantalla (en unidades de alto), así se ve en cualquier
+  // anchura: en escritorio desde un tercio abajo hasta la derecha; en pantalla estrecha, de esquina a esquina.
+  float A = res.x / res.y;
+  float PR = 3.0;
+  vec2 P1 = mix(vec2(A * 0.36, 0.0), vec2(0.0, 0.0), movil);
+  vec2 P2 = mix(vec2(A, 0.32), vec2(A, 0.3), movil);
+  vec2 M = (P1 + P2) * 0.5, dd = P2 - P1;
+  float Lh = length(dd) * 0.5;
+  vec2 pc = M + normalize(vec2(dd.y, -dd.x)) * sqrt(PR * PR - Lh * Lh);
+  float dpl = length(s - pc);
+  vec2 nrm = (s - pc) / PR;
+  vec3 n3 = vec3(nrm, sqrt(max(0.0, 1.0 - dot(nrm, nrm))));
+  vec3 L = normalize(vec3(-0.55, 0.75, 0.35));
+  float luz = dot(n3, L);
+  if (dpl < PR) {
+    // Coordenadas sobre la esfera: el detalle se comprime hacia el borde, como en una esfera real
+    vec2 tu = n3.xy / (0.22 + n3.z) * 3.2 + vec2(t * 0.003, 0.0);
+    vec2 w = vec2(fbm4(tu * 1.7), fbm4(tu * 1.7 + 5.0));
+    float tierra = smoothstep(0.52, 0.58, fbm6(tu * 1.2 + w * 0.8 + 2.0));
+    float nubes = smoothstep(0.42, 0.78, fbm6(tu * 2.6 + w * 1.8));
+    float nubesFinas = smoothstep(0.5, 0.88, fbm6(tu * 7.0 + w * 3.0));
+    vec3 mar = vec3(0.03, 0.09, 0.17), costa = vec3(0.12, 0.16, 0.14), desierto = vec3(0.32, 0.27, 0.2);
+    vec3 suelo = mix(mar, mix(costa, desierto, fbm4(tu * 3.0)), tierra);
+    vec3 pl = mix(suelo, vec3(0.92, 0.94, 0.97), clamp(nubes * 0.85 + nubesFinas * 0.35, 0.0, 1.0));
+    float dia = smoothstep(-0.15, 0.55, luz);
+    pl *= (0.05 + 1.25 * dia) * (1.0 - 0.35 * nubes * (1.0 - nubesFinas));
+    // Luces de ciudades en el lado de noche
+    float ciudades = step(0.76, fbm4(tu * 26.0)) * tierra * (1.0 - nubes) * (1.0 - dia);
+    pl += vec3(1.0, 0.72, 0.38) * ciudades * 0.9;
+    // El reflejo de la luz en el océano
+    vec3 R = reflect(-L, n3);
+    pl += vec3(1.0, 0.9, 0.78) * pow(max(R.z, 0.0), 60.0) * (1.0 - tierra) * (1.0 - nubes) * 1.4;
+    // Reflejo del mar y dispersión cerca del borde
+    pl += vec3(0.5, 0.65, 0.85) * pow(1.0 - n3.z, 4.0) * 0.9 * dia;
+    col = pl;
+  }
+  // La atmósfera en capas: un filo blanco y un halo azul que se apaga hacia fuera
+  float fuera = max(0.0, dpl - PR);
+  float lado = smoothstep(-0.3, 0.6, luz);
+  col += vec3(0.85, 0.93, 1.0) * exp(-fuera * 120.0) * smoothstep(PR - 0.01, PR, dpl) * (0.25 + 1.2 * lado);
+  col += vec3(0.35, 0.6, 1.0) * exp(-fuera * 22.0) * smoothstep(PR - 0.01, PR, dpl) * (0.15 + 0.7 * lado);
+  // Acabado: viñeta (el grano se pone al final, sobre la imagen ya acumulada)
+  vec2 q = gl_FragCoord.xy / res;
+  col *= mix(0.55, 1.0, smoothstep(1.15, 0.35, length((q - vec2(0.62, 0.5)) * vec2(1.2, 1.0))));
+  col = mix(texture2D(prev, q).rgb, col, mezcla);
+  // Redondeo al azar: con 8 bits por canal, la mezcla se quedaría atascada en los tonos oscuros.
+  col += (hash(gl_FragCoord.xy + semilla * 53.0) - 0.5) / 255.0;
+  gl_FragColor = vec4(col, 1.0);
+}`;
+  // Pasa la imagen acumulada a la pantalla: le suma el resplandor (la luz del gas caliente que se derrama
+  // alrededor, como en una cámara de cine), le da un tono cálido a las luces y le pone grano de película.
+  const fin = `
+precision highp float;
+uniform sampler2D img; uniform sampler2D halo; uniform vec2 res; uniform float t;
+float hash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+void main(){
+  vec2 q = gl_FragCoord.xy / res;
+  vec3 col = texture2D(img, q).rgb;
+  vec3 h = texture2D(halo, q).rgb;
+  col += h * vec3(1.0, 0.86, 0.68) * 0.75;
+  col = 1.0 - (1.0 - col) * (1.0 - h * 0.25);
+  float l = dot(col, vec3(0.3, 0.59, 0.11));
+  col = mix(col, col * vec3(1.05, 1.0, 0.92), smoothstep(0.35, 1.0, l));
+  col += (hash(gl_FragCoord.xy + fract(t) * 91.0) - 0.5) * 0.016;
+  gl_FragColor = vec4(col, 1.0);
+}`;
+  // El resplandor se calcula a un cuarto de resolución: primero se queda solo con lo brillante...
+  const luces = `
+precision highp float;
+uniform sampler2D img; uniform vec2 px; uniform vec2 resB;
+void main(){
+  vec2 uv = gl_FragCoord.xy / resB;
+  vec3 c = texture2D(img, uv + px * vec2(-1.0, -1.0)).rgb + texture2D(img, uv + px * vec2(1.0, -1.0)).rgb
+         + texture2D(img, uv + px * vec2(-1.0, 1.0)).rgb + texture2D(img, uv + px * vec2(1.0, 1.0)).rgb;
+  c *= 0.25;
+  float l = dot(c, vec3(0.3, 0.59, 0.11));
+  gl_FragColor = vec4(c * smoothstep(0.4, 0.9, l), 1.0);
+}`;
+  // ...y luego lo difumina en dos direcciones (gaussiana de 9 puntos con 5 lecturas).
+  const difumina = `
+precision highp float;
+uniform sampler2D img; uniform vec2 paso; uniform vec2 resB;
+void main(){
+  vec2 uv = gl_FragCoord.xy / resB;
+  vec3 c = texture2D(img, uv).rgb * 0.227;
+  c += (texture2D(img, uv + paso * 1.385).rgb + texture2D(img, uv - paso * 1.385).rgb) * 0.316;
+  c += (texture2D(img, uv + paso * 3.231).rgb + texture2D(img, uv - paso * 3.231).rgb) * 0.070;
+  gl_FragColor = vec4(c, 1.0);
+}`;
+  const pre = `
+precision highp float;
+uniform vec2 tam;
+const float TAU = 6.2831853;
+float hash(vec2 p){ p = fract(p * vec2(123.34, 456.21)); p += dot(p, p + 45.32); return fract(p.x * p.y); }
+float noise(vec2 p){ vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  return mix(mix(hash(i), hash(i + vec2(1, 0)), f.x), mix(hash(i + vec2(0, 1)), hash(i + vec2(1, 1)), f.x), f.y); }
+float fbm(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 5; i++) { v += a * noise(p); p = mat2(1.6, 1.2, -1.2, 1.6) * p + 7.3; a *= 0.5; } return v; }
+float fbm6(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 6; i++) { v += a * noise(p); p = mat2(1.6, 1.2, -1.2, 1.6) * p + 7.3; a *= 0.5; } return v; }
+float fbm4(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 4; i++) { v += a * noise(p); p = mat2(1.6, 1.2, -1.2, 1.6) * p + 7.3; a *= 0.5; } return v; }
+float fbm3(vec2 p){ float v = 0.0, a = 0.5; for (int i = 0; i < 3; i++) { v += a * noise(p); p = mat2(1.6, 1.2, -1.2, 1.6) * p + 7.3; a *= 0.5; } return v / 0.875; }
+
+
+// Ruido que se repite exactamente al dar la vuelta: la coordenada del ángulo (y) tiene periodo «per».
+// Así la textura polar no tiene costura, sin mezclar nada cerca de 2PI.
+float noiseP(vec2 p, float per){
+  vec2 i = floor(p), f = fract(p); f = f * f * (3.0 - 2.0 * f);
+  float y0 = mod(i.y, per), y1 = mod(i.y + 1.0, per);
+  return mix(mix(hash(vec2(i.x, y0)), hash(vec2(i.x + 1.0, y0)), f.x),
+             mix(hash(vec2(i.x, y1)), hash(vec2(i.x + 1.0, y1)), f.x), f.y);
+}
+float fbmP(vec2 p, float per){
+  float v = 0.0, a = 0.5;
+  for (int i = 0; i < 4; i++) { v += a * noiseP(p, per); p = p * 2.0 + vec2(7.3, 0.0); per *= 2.0; a *= 0.5; }
+  return v / 0.9375;
+}
+// Las hebras de Gargantua: filamentos finos, como pelo o humo estirado a lo largo de la órbita. Son las
+// curvas de nivel de un ruido muy alargado (1 - |2n - 1|, afiladas), y una turbulencia lenta las desvía
+// a lo ancho para que se curven y se deshilachen. Dos grosores de hebra.
+// Las nubes del polvo de fuera: ruido deformado por otro ruido (remolinos), alargado en la órbita.
+vec4 campos(float r, float a){
+  float u = a / TAU;
+  float rr = r + 0.55 * fbmP(vec2(r * 0.9 + 1.0, u * 8.0), 8.0) + 0.16 * fbmP(vec2(r * 2.4 + 5.0, u * 20.0), 20.0);
+  float h1 = pow(1.0 - abs(2.0 * fbmP(vec2(rr * 4.5, u * 5.0), 5.0) - 1.0), 3.0);
+  float h2 = pow(1.0 - abs(2.0 * fbmP(vec2(rr * 12.0 + 3.0, u * 9.0), 9.0) - 1.0), 4.0);
+  float q1 = fbmP(vec2(r * 0.8 + 2.0, u * 6.0), 6.0);
+  float q2 = fbmP(vec2(r * 0.8 + 6.0, u * 6.0), 6.0);
+  float nube = 0.7 * fbmP(vec2(r * 1.4 + 2.2 * q1, u * 24.0 + 3.0 * q2), 24.0)
+             + 0.3 * fbmP(vec2(r * 4.5 + 3.0 * q1 + 9.0, u * 64.0 + 6.0 * q2), 64.0);
+  float grumo = fbmP(vec2(r * 0.6 + 4.0, u * 12.0), 12.0);
+  return vec4(h1, h2, nube, grumo);
+}
+void main(){
+  vec2 f = gl_FragCoord.xy / tam;
+  gl_FragColor = campos(mix(2.3, 14.3, f.y), f.x * TAU);
+}
+`;
+  function sombreador(tipo, fuente) {
+    const s = gl.createShader(tipo); gl.shaderSource(s, fuente); gl.compileShader(s);
+    if (!gl.getShaderParameter(s, gl.COMPILE_STATUS) && !gl.isContextLost()) throw new Error(gl.getShaderInfoLog(s));
+    return s;
+  }
+  function programa(fuente) {
+    const pr = gl.createProgram();
+    gl.attachShader(pr, sombreador(gl.VERTEX_SHADER, vert));
+    gl.attachShader(pr, sombreador(gl.FRAGMENT_SHADER, fuente));
+    gl.bindAttribLocation(pr, 0, 'p');
+    gl.linkProgram(pr);
+    if (!gl.getProgramParameter(pr, gl.LINK_STATUS) && !gl.isContextLost()) throw new Error(gl.getProgramInfoLog(pr));
+    return pr;
+  }
+
+  // La textura del gas, 2048 de ángulo x 1024 de radio, repetida en el ángulo. Se pinta UNA vez, pero por
+  // franjas y en varios fotogramas: de golpe, en un equipo modesto, la tarjeta podría tardar tanto que el
+  // navegador la reiniciara.
+  const TW = 2048, TH = 1024, FRANJAS = 16, POR_CUADRO = 2;
+  let prePr, preFb, textura, prog, finPr, acum, tipo;
+  let uRes, uT, uCentro, uMovil, uMezcla, uJit, uSemilla, uResF, uTF, uLlegada;
+  // La llegada empieza cuando la entrada se abre (o ya, si no hay entrada) y dura 3,4 s.
+  const sinLlegada = quieto || document.documentElement.classList.contains('sin-intro');
+  let inicioLlegada = -1;
+  let lucesPr, difPr, resp, uPxL, uResL, uPasoD, uResD, bw = 1, bh = 1;
+  let franja = 0, listo = false;
+  // Todo lo que vive en la tarjeta se crea aquí: al cargar y, si el contexto se pierde, al recuperarlo.
+  function montar() {
+    gl.getExtension('EXT_shader_texture_lod');
+    const aniso = gl.getExtension('EXT_texture_filter_anisotropic') || gl.getExtension('WEBKIT_EXT_texture_filter_anisotropic');
+    const medio = gl.getExtension('OES_texture_half_float');
+    gl.getExtension('EXT_color_buffer_half_float');
+    tipo = medio ? medio.HALF_FLOAT_OES : gl.UNSIGNED_BYTE;
+
+    const buf = gl.createBuffer(); gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(0); gl.vertexAttribPointer(0, 2, gl.FLOAT, false, 0, 0);
+
+    prePr = programa(pre);
+    gl.useProgram(prePr);
+    gl.uniform2f(gl.getUniformLocation(prePr, 'tam'), TW, TH);
+    preFb = gl.createFramebuffer();
+    textura = gl.createTexture();
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, textura);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, TW, TH, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    if (aniso) gl.texParameterf(gl.TEXTURE_2D, aniso.TEXTURE_MAX_ANISOTROPY_EXT, Math.min(8, gl.getParameter(aniso.MAX_TEXTURE_MAX_ANISOTROPY_EXT)));
+    gl.bindFramebuffer(gl.FRAMEBUFFER, preFb);
+    gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, textura, 0);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+
+    prog = programa(frag);
+    gl.useProgram(prog);
+    gl.uniform1i(gl.getUniformLocation(prog, 'tA'), 0);
+    gl.uniform1i(gl.getUniformLocation(prog, 'prev'), 2);
+    uRes = gl.getUniformLocation(prog, 'res'); uT = gl.getUniformLocation(prog, 't');
+    uCentro = gl.getUniformLocation(prog, 'centro'); uMovil = gl.getUniformLocation(prog, 'movil');
+    uMezcla = gl.getUniformLocation(prog, 'mezcla'); uJit = gl.getUniformLocation(prog, 'jit');
+    uSemilla = gl.getUniformLocation(prog, 'semilla'); uLlegada = gl.getUniformLocation(prog, 'llegada');
+    finPr = programa(fin);
+    gl.useProgram(finPr);
+    gl.uniform1i(gl.getUniformLocation(finPr, 'img'), 2);
+    gl.uniform1i(gl.getUniformLocation(finPr, 'halo'), 3);
+    uResF = gl.getUniformLocation(finPr, 'res'); uTF = gl.getUniformLocation(finPr, 't');
+    lucesPr = programa(luces);
+    gl.useProgram(lucesPr);
+    gl.uniform1i(gl.getUniformLocation(lucesPr, 'img'), 2);
+    uPxL = gl.getUniformLocation(lucesPr, 'px'); uResL = gl.getUniformLocation(lucesPr, 'resB');
+    difPr = programa(difumina);
+    gl.useProgram(difPr);
+    gl.uniform1i(gl.getUniformLocation(difPr, 'img'), 3);
+    uPasoD = gl.getUniformLocation(difPr, 'paso'); uResD = gl.getUniformLocation(difPr, 'resB');
+    // Las dos imágenes del resplandor (8 bits con filtrado lineal: así se amplían suaves)
+    resp = [0, 1].map(() => ({ tx: gl.createTexture(), fb: gl.createFramebuffer() }));
+    // Las dos imágenes de la acumulación (una se lee, la otra se escribe, y se turnan). En media precisión
+    // si la tarjeta lo permite; si no, en 8 bits con redondeo al azar.
+    acum = [0, 1].map(() => ({ tx: gl.createTexture(), fb: gl.createFramebuffer() }));
+    franja = 0; listo = false;
+  }
+  // Pinta las franjas que tocan en este fotograma; al terminar, prepara los niveles de detalle.
+  function precalcular() {
+    gl.useProgram(prePr);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, preFb);
+    gl.viewport(0, 0, TW, TH);
+    gl.enable(gl.SCISSOR_TEST);
+    for (let i = 0; i < POR_CUADRO && franja < FRANJAS; i++, franja++) {
+      gl.scissor(0, franja * TH / FRANJAS, TW, TH / FRANJAS);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+    gl.disable(gl.SCISSOR_TEST);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    if (franja < FRANJAS) return;
+    gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, textura);
+    gl.generateMipmap(gl.TEXTURE_2D);
+    listo = true;
+    medir();
+    c.classList.add('listo');
+  }
+  function prepararAcum(w, h) {
+    gl.activeTexture(gl.TEXTURE2); // la unidad 0 es la del gas: no tocarla
+    for (const a of acum) {
+      gl.bindTexture(gl.TEXTURE_2D, a.tx);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, tipo, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, a.fb);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, a.tx, 0);
+      if (tipo !== gl.UNSIGNED_BYTE && gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) {
+        tipo = gl.UNSIGNED_BYTE; return prepararAcum(w, h);
+      }
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+  // Resolución adaptable: si un fotograma tarda demasiado, se baja un poco la escala.
+  // En el telefono el lienzo es pequeno: se pinta a resolucion completa para que los bordes salgan limpios.
+  const tope = innerWidth < 900 ? Math.min(1.5, devicePixelRatio || 1) : Math.min(1, devicePixelRatio || 1);
+  let escala = tope * 0.7, ultimo = 0, media = 16.7, visible = true, corriendo = false, perdido = false;
+  let turno = 0, cuadro = 0, limpio = true;
+  function medir() {
+    if (perdido || !listo) return;
+    const w = c.clientWidth, h = c.clientHeight, movil = w < 900;
+    c.width = Math.round(w * escala); c.height = Math.round(h * escala);
+    gl.viewport(0, 0, c.width, c.height);
+    prepararAcum(c.width, c.height);
+    bw = Math.max(1, Math.round(c.width / 4)); bh = Math.max(1, Math.round(c.height / 4));
+    gl.activeTexture(gl.TEXTURE3);
+    for (const a of resp) {
+      gl.bindTexture(gl.TEXTURE_2D, a.tx);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, bw, bh, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+      gl.bindFramebuffer(gl.FRAMEBUFFER, a.fb);
+      gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, a.tx, 0);
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.useProgram(lucesPr);
+    gl.uniform2f(uPxL, 1 / c.width, 1 / c.height); gl.uniform2f(uResL, bw, bh);
+    gl.useProgram(difPr);
+    gl.uniform2f(uResD, bw, bh);
+    limpio = true;
+    gl.useProgram(finPr);
+    gl.uniform2f(uResF, c.width, c.height);
+    gl.useProgram(prog);
+    gl.uniform2f(uRes, c.width, c.height);
+    gl.uniform2f(uCentro, movil ? 0.5 : 0.64, movil ? 0.56 : 0.5);
+    gl.uniform1f(uMovil, movil ? 1 : 0);
+  }
+  // Desplazamientos de subpíxel de Halton (2, 3): ocho posiciones bien repartidas dentro de cada píxel.
+  const halton = (i, b) => { let f = 1, r = 0; while (i > 0) { f /= b; r += f * (i % b); i = Math.floor(i / b); } return r; };
+  const jits = Array.from({ length: 8 }, (_, i) => [halton(i + 1, 2) - 0.5, halton(i + 1, 3) - 0.5]);
+  // A 60 fotogramas por segundo. Para sostenerlos en cualquier equipo, la resolución del lienzo se ajusta
+  // sola con la media de lo que tarda cada fotograma: baja si pasa de 19,5 ms, sube si sobra margen.
+  let ajuste = 0;
+  function pintar(ms) {
+    corriendo = false;
+    if (perdido) return;
+    // El gas se prepara aunque la escena aún no se vea (en el móvil queda bajo el texto): así ya está
+    // lista al bajar.
+    if (!listo) { precalcular(); pedir(); return; }
+    if (!visible) return;
+    // Un tirón suelto (la carga de la página, cambiar de pestaña) no cuenta: solo lo sostenido.
+    if (ultimo && ms - ultimo < 80) {
+      media = media * 0.9 + (ms - ultimo) * 0.1;
+      if (++ajuste > 30) {
+        ajuste = 0;
+        if (media > 19.5 && escala > 0.32) { escala = Math.max(0.32, escala * 0.88); medir(); }
+        else if (media < 17.2 && escala < tope) { escala = Math.min(tope, escala * 1.08); medir(); }
+      }
+    }
+    ultimo = ms;
+    const tt = (ms || 0) / 1000 + 20.0, k = cuadro++ % 8;
+    // 1) El agujero, mezclado con el fotograma anterior, en la imagen que toca escribir
+    gl.useProgram(prog);
+    gl.viewport(0, 0, c.width, c.height);
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, acum[1 - turno].tx);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, acum[turno].fb);
+    gl.uniform1f(uT, tt);
+    if (inicioLlegada < 0) inicioLlegada = Math.max(ms || 0, 2000);
+    const ll = sinLlegada ? 1 : Math.min(1, Math.max(0, ((ms || 0) - inicioLlegada) / 3400));
+    gl.uniform1f(uLlegada, ll);
+    // Mientras la cámara viaja, se mezcla menos con el fotograma anterior (si no, dejaría estela).
+    gl.uniform1f(uMezcla, limpio ? 1 : (ll < 1 ? 0.6 : 0.2));
+    gl.uniform2f(uJit, jits[k][0], jits[k][1]);
+    gl.uniform1f(uSemilla, (cuadro % 64) + 1);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    // 2) El resplandor, a un cuarto de resolución: lo brillante, y luego difuminado dos veces (ancho)
+    gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, acum[turno].tx);
+    gl.viewport(0, 0, bw, bh);
+    gl.useProgram(lucesPr);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, resp[0].fb);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    gl.useProgram(difPr);
+    gl.activeTexture(gl.TEXTURE3);
+    for (const s of [1.5, 3.5]) {
+      gl.bindTexture(gl.TEXTURE_2D, resp[0].tx); gl.bindFramebuffer(gl.FRAMEBUFFER, resp[1].fb);
+      gl.uniform2f(uPasoD, s / bw, 0); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      gl.bindTexture(gl.TEXTURE_2D, resp[1].tx); gl.bindFramebuffer(gl.FRAMEBUFFER, resp[0].fb);
+      gl.uniform2f(uPasoD, 0, s / bh); gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    }
+    // 3) A la pantalla: imagen, resplandor, tono y grano
+    gl.bindTexture(gl.TEXTURE_2D, resp[0].tx);
+    gl.useProgram(finPr);
+    gl.viewport(0, 0, c.width, c.height);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.uniform1f(uTF, tt);
+    gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+    turno = 1 - turno; limpio = false;
+    if (!quieto) pedir();
+  }
+  function pedir() { if (!corriendo) { corriendo = true; requestAnimationFrame(pintar); } }
+  // Fuera de pantalla no se pinta: al bajar por la página el agujero se para y no gasta nada.
+  // Al volver, la acumulación empieza de cero (el fotograma guardado ya es viejo).
+  new IntersectionObserver((e) => { visible = e[0].isIntersecting; if (visible) { ultimo = 0; limpio = true; pedir(); } }, { threshold: 0 }).observe(c);
+  addEventListener('resize', () => { medir(); pedir(); });
+  // Si la tarjeta gráfica se reinicia, el lienzo se desvanece (queda el cielo de estrellas de la página,
+  // nunca un recuadro en blanco) y, cuando el navegador devuelve el contexto, todo se vuelve a montar.
+  c.addEventListener('webglcontextlost', (e) => { e.preventDefault(); perdido = true; c.classList.remove('listo'); });
+  c.addEventListener('webglcontextrestored', () => { perdido = false; montar(); ultimo = 0; pedir(); });
+  montar(); pedir();
+})();
+
+
+// ── LA LECTURA REAL: BTCUSDT 3m, 16/10/2026 de 05:36 a 08:09 (hora de Ecuador). [i, apertura, máximo, mínimo, cierre].
+const T0 = 1792146960000;
+const V = [[0,82168.7,82200.0,82065.7,82068.8],[1,82068.8,82243.9,82056.9,82229.2],[2,82229.2,82278.7,82173.0,82181.9],[3,82181.9,82194.5,82146.9,82194.5],[4,82194.5,82194.5,82122.0,82139.6],[5,82139.6,82164.2,82123.9,82148.6],[6,82148.6,82216.5,82148.6,82207.0],[7,82207.0,82247.5,82178.6,82178.6],[8,82178.6,82260.2,82161.6,82220.0],[9,82220.0,82269.2,82180.7,82259.2],[10,82259.2,82301.0,82238.4,82288.5],[11,82288.5,82391.0,82262.6,82391.0],[12,82391.0,82694.5,82390.9,82627.4],[13,82627.4,82644.4,82494.0,82582.7],[14,82582.7,82684.6,82553.1,82679.7],[15,82679.7,82852.6,82660.0,82793.1],[16,82793.1,82863.7,82726.3,82807.4],[17,82807.4,82897.6,82767.2,82781.5],[18,82781.5,82841.2,82718.2,82754.6],[19,82754.6,82754.7,82652.8,82725.6],[20,82725.6,82733.0,82656.1,82656.2],[21,82656.2,82738.0,82640.0,82670.4],[22,82670.4,82728.7,82655.3,82655.3],[23,82655.3,82708.0,82633.0,82683.9],[24,82683.9,82683.9,82608.0,82617.5],[25,82617.5,82649.6,82586.4,82594.4],[26,82594.4,82607.3,82583.9,82590.2],[27,82590.2,82657.2,82590.1,82607.8],[29,82466.2,82466.2,82382.0,82400.5],[30,82400.5,82431.5,82311.0,82336.4],[31,82336.4,82376.7,82265.4,82269.0],[32,82269.0,82315.3,82196.4,82200.1],[33,82200.1,82270.2,82068.7,82255.4],[34,82255.4,82307.3,82229.4,82287.8],[35,82287.8,82362.8,82287.7,82318.6],[36,82318.6,82367.0,82306.1,82306.1],[37,82306.1,82324.3,82290.0,82305.2],[38,82305.2,82333.9,82268.0,82314.0],[39,82314.0,82409.6,82290.2,82350.1],[40,82350.1,82350.1,82219.6,82219.7],[41,82219.7,82313.1,82219.7,82291.0],[42,82291.0,82291.0,82228.3,82248.3],[43,82248.3,82248.3,82077.7,82080.6],[44,82080.6,82114.0,82040.7,82052.1],[45,82052.1,82075.8,81970.2,81996.7],[46,81996.7,82078.2,81977.8,82022.4],[47,82022.4,82046.4,81993.8,82014.8],[48,82014.8,82081.7,82001.5,82023.0],[49,82023.0,82023.0,81934.3,81954.8],[50,81954.8,82013.2,81912.2,81920.1],[51,81920.1,82009.5,81900.1,82003.2],[52,82003.2,82030.6,81974.0,82015.1]];
+// Solo lo que se ve, nunca cómo se decide: la regla del indicador es privada (17/10/2026).
+const NIVEL = 82852.6, ENTRADA = 82431.5, STOP = 82897.6;
+const ROT = {
+  es: { barrida: 'LIQUIDEZ BARRIDA', venta: 'LIQUIDEZ VENTA', entrada: 'entrada', objetivo: 'objetivo', loc: 'es-ES' },
+  en: { barrida: 'LIQUIDITY SWEPT', venta: 'SELL LIQUIDITY', entrada: 'entry', objetivo: 'target', loc: 'en-US' },
+  pt: { barrida: 'LIQUIDEZ VARRIDA', venta: 'LIQUIDEZ VENDA', entrada: 'entrada', objetivo: 'alvo', loc: 'pt-BR' },
+};
+const ECU = new Intl.DateTimeFormat('es-EC', { hour: '2-digit', minute: '2-digit', hour12: false, timeZone: 'America/Guayaquil' });
+const hora = (i) => ECU.format(new Date(T0 + i * 180000));
+const px = (x) => x.toLocaleString(ROT[IDIOMA].loc, { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+(() => {
+  const c = document.getElementById('grafico-c'), g = c.getContext('2d');
+  const items = [...document.querySelectorAll('#registro li')];
+  const reloj = document.getElementById('reloj');
+  const quieto = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let w, h, r = devicePixelRatio || 1, hasta = V.length - 1, t0 = null, jugando = false;
+  const bajo = Math.min(...V.map((v) => v[3])) - 60, alto = Math.max(...V.map((v) => v[2])) + 60;
+  const der = 70, abajo = 24;
+  const X = (i) => 12 + (i + .5) * ((w - der - 12) / V.length);
+  const Y = (p) => 16 + (alto - p) / (alto - bajo) * (h - abajo - 30);
+  const MONO = '"Geist Mono", ui-monospace, monospace';
+  function medir() { w = c.clientWidth; h = c.clientHeight; c.width = w * r; c.height = h * r; g.setTransform(r, 0, 0, r, 0, 0); pintar(); }
+  function linea(p, color, desde, guion, texto) {
+    const y = Y(p); g.save(); g.strokeStyle = color; g.lineWidth = 1; g.shadowColor = color; g.shadowBlur = 9; if (guion) g.setLineDash(guion);
+    g.beginPath(); g.moveTo(X(desde) - 4, y); g.lineTo(w - der, y); g.stroke(); g.restore();
+    if (texto) { g.font = `500 10px ${MONO}`; g.fillStyle = color; g.textAlign = 'right'; g.fillText(texto, w - der - 6, y - 5); }
+  }
+  function etiqueta(i, p, texto, lleno, color) {
+    g.font = '600 10.5px Geist, system-ui, sans-serif';
+    const ancho = g.measureText(texto).width + 14, x = X(i) - ancho / 2, y = Y(p) - 24;
+    g.beginPath(); g.roundRect(x, y, ancho, 16, 3);
+    if (lleno) { g.fillStyle = color; g.fill(); g.fillStyle = '#120604'; }
+    else { g.fillStyle = 'rgba(10,11,13,.92)'; g.fill(); g.setLineDash([3, 2]); g.strokeStyle = color; g.stroke(); g.setLineDash([]); g.fillStyle = color; }
+    g.textAlign = 'center'; g.fillText(texto, X(i), y + 11.5);
+  }
+  function pintar() {
+    const L = ROT[IDIOMA];
+    g.clearRect(0, 0, w, h);
+    // Rejilla y ejes
+    g.font = `400 10px ${MONO}`; g.textAlign = 'left';
+    for (let p = Math.ceil(bajo / 200) * 200; p <= alto; p += 200) {
+      const y = Y(p); g.strokeStyle = '#15171b'; g.beginPath(); g.moveTo(0, y); g.lineTo(w - der, y); g.stroke();
+      g.fillStyle = '#656970'; g.fillText(px(p), w - der + 8, y + 3);
+    }
+    for (let i = 0; i < V.length; i += 10) { g.fillStyle = '#656970'; g.textAlign = 'center'; g.fillText(hora(i), X(i), h - 7); }
+    // Lo que Nashira dibuja, en su momento
+    if (hasta >= 15) linea(NIVEL, '#ffe600', 15, null, hasta >= 17 ? L.barrida : L.venta);
+    if (hasta >= 32) { linea(ENTRADA, '#e0604d', 32, null, L.entrada + ' ' + px(ENTRADA)); linea(STOP, '#e0604d', 32, [4, 3], 'stop ' + px(STOP)); }
+    // Velas
+    const cw = Math.max(2, (w - der - 12) / V.length * .6);
+    for (let i = 0; i <= hasta; i++) {
+      const [, o, hi, lo, cl] = V[i], sube = cl >= o, x = X(i);
+      g.strokeStyle = g.fillStyle = sube ? '#3fbfa3' : '#e0604d';
+      // La vela en curso, con halo: se ve dónde va la lectura
+      if (i === hasta && hasta < V.length - 1) { g.shadowColor = g.fillStyle; g.shadowBlur = 14; }
+      g.beginPath(); g.moveTo(x, Y(hi)); g.lineTo(x, Y(lo)); g.stroke();
+      const y1 = Y(Math.max(o, cl)), y2 = Y(Math.min(o, cl)); g.fillRect(x - cw / 2, y1, cw, Math.max(1, y2 - y1));
+      g.shadowBlur = 0;
+    }
+    // El brillo del barrido, en la vela que lo hizo
+    if (hasta >= 17) {
+      const sx = X(17), sy = Y(NIVEL), b = g.createRadialGradient(sx, sy, 0, sx, sy, 46);
+      b.addColorStop(0, 'rgba(255,230,0,.35)'); b.addColorStop(1, 'rgba(255,230,0,0)');
+      g.fillStyle = b; g.fillRect(sx - 46, sy - 46, 92, 92);
+    }
+    if (hasta >= 32) etiqueta(17, V[17][2], 'Short', true, '#e0604d');
+    if (hasta >= 32) { g.font = `500 10px ${MONO}`; g.fillStyle = '#3fbfa3'; g.textAlign = 'right'; g.fillText(L.objetivo + ' ' + px(80969.1) + ' ↓', w - der - 6, h - abajo - 8); }
+    items.forEach((li) => { const i = +li.dataset.i; li.classList.toggle('hecho', i <= hasta); li.classList.remove('ahora'); });
+    const ahora = items.filter((li) => +li.dataset.i <= hasta).pop(); if (ahora && hasta < V.length - 1) ahora.classList.add('ahora');
+    reloj.textContent = hora(hasta);
+  }
+  function correr(ms) {
+    if (t0 === null) t0 = ms;
+    hasta = Math.min(V.length - 1, Math.floor((ms - t0) / 230));
+    pintar();
+    if (hasta < V.length - 1) requestAnimationFrame(correr); else jugando = false;
+  }
+  function repetir() { if (quieto) { hasta = V.length - 1; pintar(); return; } t0 = null; jugando = true; requestAnimationFrame(correr); }
+  document.getElementById('otra').addEventListener('click', repetir);
+  window.repintarGrafico = () => pintar();
+  medir(); addEventListener('resize', medir);
+  // Empieza completa (lo que ve una miniatura) y se repite al entrar en pantalla.
+  const ojo = new IntersectionObserver((e) => { if (e[0].isIntersecting && !jugando) { repetir(); ojo.disconnect(); } }, { threshold: .4 });
+  ojo.observe(c);
+})();
+</script>
+
+</body>
+</html>
